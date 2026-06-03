@@ -108,10 +108,29 @@
         submitBtn.disabled = true;
         try {
           const data = new FormData(form);
+          const name = String(data.get("name") || "").trim();
+          const priceInput = String(data.get("price") || "").trim();
+
+          // Validation: name is required
+          if (!name) {
+            msg.textContent = "Please enter a meal name.";
+            msg.classList.add("is-err"); msg.hidden = false;
+            submitBtn.disabled = false;
+            return;
+          }
+
+          // Validation: price is required and must be >= 0
+          if (!priceInput || isNaN(priceInput) || Number(priceInput) < 0) {
+            msg.textContent = "Please set a valid price.";
+            msg.classList.add("is-err"); msg.hidden = false;
+            submitBtn.disabled = false;
+            return;
+          }
+
           await addDoc(collection(db, "meals"), {
-            name:        String(data.get("name") || "").trim(),
+            name:        name,
             description: String(data.get("description") || "").trim(),
-            price:       Number(data.get("price") || 0),
+            price:       Number(priceInput),
             createdAt:   serverTimestamp(),
             createdBy:   auth.currentUser ? auth.currentUser.email : null
           });
