@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dawat · Orders</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+    <meta name="view-transition" content="same-origin" />
+  </head>
+  <body class="admin-page">
+    <div class="lights">
+      <span class="bulb c1"></span><span class="bulb c2"></span><span class="bulb c3"></span><span class="bulb c4"></span><span class="bulb c5"></span>
+      <span class="bulb c1"></span><span class="bulb c2"></span><span class="bulb c3"></span><span class="bulb c4"></span><span class="bulb c5"></span>
+      <span class="bulb c1"></span><span class="bulb c2"></span><span class="bulb c3"></span><span class="bulb c4"></span><span class="bulb c5"></span>
+    </div>
+
+    <div class="top-fixed">
+      <div class="brand">DAWAT</div>
+      <div class="tagline">★ আপনার নিমন্ত্রণ ★</div>
+    </div>
+
+    <h1>Orders</h1>
+    <p id="orders-subtitle">Loading<span class="loading-dots"><span></span><span></span><span></span></span></p>
+
+    <div class="admin-view" id="orders-view" hidden>
+      <div class="admin-toolbar">
+        <div class="admin-who">Signed in as <span id="admin-who-email">—</span></div>
+        <div class="toolbar-actions">
+          <button type="button" id="signout-btn" class="ghost-btn">Sign out</button>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="applications">Applications</a>
+        <a href="users">Users</a>
+        <a href="meals">Meals</a>
+        <a href="menu-admin">Menu</a>
+        <a href="orders-admin" class="is-active">Orders</a>
+        <a href="topups-admin">Top-ups</a>
+        <a href="settings-admin">Settings</a>
+      </nav>
+
+      <div id="orders-list" class="apps-list" aria-live="polite">
+        <p class="apps-empty">Loading<span class="loading-dots"><span></span><span></span><span></span></span></p>
+      </div>
+    </div>
+
+    <script type="module">
+      import { auth, db } from "./firebase.js";
+      import {
+        onAuthStateChanged, signOut
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import {
+        collection, onSnapshot, query, orderBy, getDocs
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      import { formatTk, formatDateLabel, toDateKey, startOfToday } from "./app-utils.js";
+      import { mountNotificationBell } from "./notifications.js";
+      import { show404 } from "./app-utils.js";
+
+      const ADMIN_EMAILS = ["ihavedawat@gmail.com"];
+
+      const subtitle = document.getElementById("orders-subtitle");
+      const view     = document.getElementById("orders-view");
+      const whoEmail = document.getElementById("admin-who-email");
+      const signoutBtn = document.getElementById("signout-btn");
+      const listEl   = document.getElementById("orders-list");
+
+      let nameByEmail   = {};
+      let activeEmails  = new Set();
+      let blockedEmails = new Set();
+      let lastOrders    = [];
+      const DATES_PER_PAGE = 10;
+      let datesPage = 0;
+
+      function escape(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[c]);
+      }
+      function dateFromKey(key) {
+        const [y, m, d] = key.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+      function formatBracketDate(key) {
+        const d = dateFromKey(key);
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      }
+      function custLabel(email) {
+        const name = nameByEmail[(email || "").toLowerCase()];
+        return name ? `${escape(name)} <span class="muted">· ${escape(email)}</span>` : escape(email);
+      }
+
+      signoutBtn.addEventListener("click", async () => {
+        await signOut(auth);
+        window.location.href = "/";
+      });
+
+      function render(orders) {
+        lastOrders = orders;
+        const live      = orders.filter((o) => o.status !== "cancelled");
+        const cancelled = orders.filter((o) => o.status === "cancelled");
+        if (!live.length && !cancelled.length) {
+          listEl.innerHTML = '<p class="apps-empty">No orders.</p>';
+          return;
+        }
+        // Group by forDate, then within each date sum per-meal totals.
+        const byDate = {};
+        for (const o of live) {
+          const key = o.forDate;
+          (byDate[key] = byDate[key] || []).push(o);
+        }
+        const cancelledByDate = {};
+        for (const o of cancelled) {
+          (cancelledByDate[o.forDate] = cancelledByDate[o.forDate] || []).push(o);
+        }
+        const todayKey = toDateKey(startOfToday());
+        const allKeys = Array.from(new Set([...Object.keys(byDate), ...Object.keys(cancelledByDate)])).sort();
+        const totalPages = Math.max(1, Math.ceil(allKeys.length / DATES_PER_PAGE));
+        if (datesPage >= totalPages) datesPage = totalPages - 1;
+        if (datesPage < 0) datesPage = 0;
+        const pageStart = datesPage * DATES_PER_PAGE;
+        const pageKeys = allKeys.slice(pageStart, pageStart + DATES_PER_PAGE);
+        const cardsHTML = pageKeys.map((key) => {
+          const items = byDate[key] || [];
+          const cItems = cancelledByDate[key] || [];
+
+          // Group by meal: for each meal name, list customers who ordered it
+          // with their quantities.
+          const byMeal = {};
+          let grand = 0;
+          for (const o of items) {
+            grand += Number(o.total || 0);
+            for (const it of (o.items || [])) {
+              const k = it.name;
+              if (!byMeal[k]) byMeal[k] = { qty: 0, price: it.price, customers: [] };
+              byMeal[k].qty += Number(it.qty || 0);
+              byMeal[k].customers.push({ email: o.userEmail, qty: Number(it.qty || 0) });
+            }
+          }
+          // Same grouping for cancelled.
+          const byMealCancelled = {};
+          for (const o of cItems) {
+            for (const it of (o.items || [])) {
+              const k = it.name;
+              if (!byMealCancelled[k]) byMealCancelled[k] = { qty: 0, customers: [] };
+              byMealCancelled[k].qty += Number(it.qty || 0);
+              byMealCancelled[k].customers.push({ email: o.userEmail, qty: Number(it.qty || 0) });
+            }
+          }
+
+          const stale = key < todayKey;
+          // Show both the customer count and total meal count so the
+          // header is unambiguous — "1 order" was confusing when that
+          // one customer had ordered several meals.
+          const mealQty = Object.values(byMeal).reduce((s, g) => s + g.qty, 0);
+          return `
+            <article class="app-card ${stale ? "is-stale" : ""}">
+              <header class="app-card-head">
+                <h3 class="app-card-name">${formatDateLabel(dateFromKey(key))}</h3>
+                <div class="card-head-right">
+                  <span class="meal-price">${items.length} customer${items.length === 1 ? "" : "s"} · ${mealQty} meal${mealQty === 1 ? "" : "s"} · ${formatTk(grand)}</span>
+                </div>
+              </header>
+              <div class="orders-summary">
+                ${Object.keys(byMeal).length ? `
+                  <ul class="meal-groups">
+                    ${Object.entries(byMeal).map(([name, g]) => `
+                      <li class="meal-group">
+                        <div class="meal-group-head">
+                          <strong class="meal-group-name">${escape(name)}</strong>
+                          <span class="meal-group-qty">× ${g.qty}</span>
+                        </div>
+                        <ul class="meal-group-customers">
+                          ${g.customers.map((c) => `
+                            <li>
+                              <span class="cust-email">${custLabel(c.email)}</span>
+                              <span class="cust-qty">× ${c.qty}</span>
+                            </li>
+                          `).join("")}
+                        </ul>
+                      </li>
+                    `).join("")}
+                  </ul>
+                ` : '<p class="muted" style="margin:0;">No active orders for this date.</p>'}
+                ${cItems.length ? `
+                  <details class="cancelled-details">
+                    <summary>
+                      <span class="orders-subhead">Cancelled</span>
+                      <span class="status-chip is-rejected">${cItems.length}</span>
+                    </summary>
+                    <ul class="cancelled-list">
+                      ${cItems.map((o) => `
+                        <li>
+                          <span class="cust-email">${custLabel(o.userEmail)}</span>
+                          <span class="cust-qty">${(o.items || []).map((it) => `${escape(it.name)} \u00d7 ${it.qty}`).join(", ")}</span>
+                        </li>
+                      `).join("")}
+                    </ul>
+                  </details>
+                ` : ''}
+              </div>
+            </article>
+          `;
+        }).join("");
+        const pager = allKeys.length > DATES_PER_PAGE
+          ? `<div class="wallet-pager">
+              <button type="button" class="ghost-btn" data-pager="prev"${datesPage === 0 ? " disabled" : ""}>◀ Prev</button>
+              <span>Page ${datesPage + 1} / ${totalPages}</span>
+              <button type="button" class="ghost-btn" data-pager="next"${datesPage >= totalPages - 1 ? " disabled" : ""}>Next ▶</button>
+            </div>`
+          : "";
+        listEl.innerHTML = cardsHTML + pager;
+      }
+
+      listEl.addEventListener("click", (ev) => {
+        const pagerBtn = ev.target.closest("[data-pager]");
+        if (!pagerBtn) return;
+        if (pagerBtn.dataset.pager === "prev") datesPage = Math.max(0, datesPage - 1);
+        else datesPage += 1;
+        render(lastOrders);
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) { window.location.replace("/"); return; }
+        if (!ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
+          await show404(); return;
+        }
+        whoEmail.textContent = user.email;
+        subtitle.textContent = "Today and upcoming orders, grouped by date.";
+        view.hidden = false;
+        mountNotificationBell({ user });
+
+        try {
+          const snap = await getDocs(collection(db, "applications"));
+          nameByEmail = {};
+          activeEmails = new Set();
+          blockedEmails = new Set();
+          snap.docs.forEach((d) => {
+            const a = d.data();
+            if (a && a.email) {
+              const key = String(a.email).toLowerCase();
+              nameByEmail[key] = a.name || "";
+              // Block orders only for explicitly blocking statuses.
+              // Missing doc / approved → allowed.
+              if (a.status === "banned" || a.status === "rejected" || a.status === "pending") {
+                blockedEmails.add(key);
+              } else {
+                activeEmails.add(key);
+              }
+            }
+          });
+        } catch (err) {
+          console.error("Could not load applicant names", err);
+        }
+
+        onSnapshot(
+          query(collection(db, "orders"), orderBy("forDate")),
+          (snap) => {
+            const items = snap.docs
+              .map((d) => ({ id: d.id, ...d.data() }))
+              .filter((o) => {
+                const key = (o.userEmail || "").toLowerCase();
+                // Hide if explicitly blocked OR if the application
+                // record no longer exists (user was deleted / disabled).
+                return !blockedEmails.has(key) && (key in nameByEmail);
+              });
+            render(items);
+          },
+          (err) => {
+            console.error(err);
+            listEl.innerHTML = '<p class="apps-empty is-err">Could not load orders.</p>';
+          }
+        );
+      });
+    </script>
+  </body>
+</html>
