@@ -113,7 +113,7 @@
 
       // If someone is already signed in, they shouldn't see the apply page.
       // Admin → admin console. Approved customer → dashboard.
-      const ADMIN_EMAILS = ["ihavedawat@gmail.com"];
+      const ADMIN_EMAILS = ["igotdawat@gmail.com"];
       onAuthStateChanged(auth, (user) => {
         if (!user) return;
         if (ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {

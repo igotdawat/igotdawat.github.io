@@ -12,12 +12,12 @@ import { getFirestore }  from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getAuth }       from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDI44_eLhGkpdtdG7x_SxlfhGrYJ1E3KD0",
-  authDomain: "ihavedawat-v1.firebaseapp.com",
-  projectId: "ihavedawat-v1",
-  storageBucket: "ihavedawat-v1.firebasestorage.app",
-  messagingSenderId: "856567145643",
-  appId: "1:856567145643:web:065d3948b88270d10883ee"
+  apiKey: "AIzaSyDsHARUEFuBtY5VI-0XdkMhaOlSc7IPaEY",
+  authDomain: "igotdawat-v1.firebaseapp.com",
+  projectId: "igotdawat-v1",
+  storageBucket: "igotdawat-v1.firebasestorage.app",
+  messagingSenderId: "706015685088",
+  appId: "1:706015685088:web:30b7a7c479a23517afa385"
 };
 
 // Single shared Firebase app instance for the whole site.

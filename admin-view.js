@@ -50,7 +50,7 @@ async function verifyAdminPassword(password) {
   }
 }
 
-const ADMIN_EMAILS = ["ihavedawat@gmail.com"];
+const ADMIN_EMAILS = ["igotdawat@gmail.com"];
 
 const GROUPS = {
   applications: ["pending", "approved", "rejected"],
@@ -272,7 +272,7 @@ function cardHTML(app) {
       const mailto = gmailHref(app, "approved");
       headerExtras = `
         <a class="head-link" target="_blank" rel="noopener"
-           href="https://console.firebase.google.com/project/ihavedawat-v1/authentication/users"
+           href="https://console.firebase.google.com/project/igotdawat-v1/authentication/users"
            title="Create the user account">+ Add User</a>
         <a class="head-link" target="_blank" rel="noopener" href="${mailto}" title="Email credentials via Gmail">✉ Email</a>`;
       actions = `
@@ -564,7 +564,7 @@ async function handleAction(id, action, btn) {
   }
 
   if (action === "begin-ban") {
-    window.open("https://console.firebase.google.com/project/ihavedawat-v1/authentication/users", "_blank", "noopener");
+    window.open("https://console.firebase.google.com/project/igotdawat-v1/authentication/users", "_blank", "noopener");
     btn.disabled = true;
     try {
       await updateDoc(doc(db, "applications", id), { banPending: true });
@@ -615,7 +615,7 @@ async function handleAction(id, action, btn) {
   }
 
   if (action === "begin-unban") {
-    window.open("https://console.firebase.google.com/project/ihavedawat-v1/authentication/users", "_blank", "noopener");
+    window.open("https://console.firebase.google.com/project/igotdawat-v1/authentication/users", "_blank", "noopener");
     btn.disabled = true;
     try {
       await updateDoc(doc(db, "applications", id), { unbanPending: true });
