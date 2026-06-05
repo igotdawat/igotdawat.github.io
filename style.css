@@ -898,6 +898,12 @@ button[disabled]:active {
   color: var(--ink);
   letter-spacing: 0.5px;
 }
+.card-balance {
+  display: inline;
+  margin-left: 2px;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
 .card-wallet {
   display: inline-flex;
   align-items: center;

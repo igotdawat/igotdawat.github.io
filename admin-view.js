@@ -27,7 +27,7 @@ import {
 import { mountNotificationBell } from "./notifications.js";
 import { confirmDialog, typeToConfirmDialog, alertDialog, passwordConfirmDialog } from "./modal.js";
 import { show404, formatTk } from "./app-utils.js";
-import { getBalance } from "./wallet.js";
+import { getBalance, subscribeWallet } from "./wallet.js";
 
 // Verify the currently-signed-in admin's password. Used to gate the
 // most destructive actions (Wipe data, Clear all). Returns true on
@@ -119,6 +119,35 @@ async function loadWalletBalancesForPage(items) {
       }
     })
   ]);
+  
+  // Set up subscriptions for live updates
+  items.forEach((app) => {
+    // Subscribe by userId if available
+    if (app.userId) {
+      const unsub = subscribeWallet(app.userId, (balance) => {
+        walletBalancesById[app.userId] = balance;
+        const span = document.querySelector(`.card-balance[data-user-id="${app.userId}"]`);
+        if (span) span.textContent = `(${formatTk(balance)})`;
+      });
+      unsubscribers.push(unsub);
+    }
+    // Subscribe by email if no userId
+    else {
+      const email = String(app.email || "").trim().toLowerCase();
+      if (email) {
+        const unsub = onSnapshot(
+          query(collection(db, "wallets"), where("email", "==", email)),
+          (snap) => {
+            const balance = snap.docs.length ? Number(snap.docs[0].data().balance || 0) : 0;
+            walletBalancesByEmail[email] = balance;
+            const span = document.querySelector(`.card-balance[data-email="${email}"]`);
+            if (span) span.textContent = `(${formatTk(balance)})`;
+          }
+        );
+        unsubscribers.push(unsub);
+      }
+    }
+  });
 }
 
 function syncPills() {
@@ -424,12 +453,12 @@ function cardHTML(app) {
     ? walletBalancesById[app.userId]
     : walletBalancesByEmail[emailKey];
   const walletLabel = ((currentFilter === "customer" || currentFilter === "banned") && (app.userId || emailKey))
-    ? ` <span class="card-wallet">Balance: ${formatTk(walletBalance ?? 0)}</span>`
+    ? ` <span class="card-balance" ${app.userId ? `data-user-id="${app.userId}"` : `data-email="${emailKey}"`}>(${formatTk(walletBalance ?? 0)})</span>`
     : "";
   return `
-    <article class="app-card" data-id="${app.id}" data-email="${escape((app.email || "").toLowerCase())}">
+    <article class="app-card" data-id="${app.id}" data-email="${escape((app.email || "").toLowerCase())}" data-name="${escape(app.name || "(no name)")}">
       <header class="card-head">
-        <span class="card-name">${escape(app.name || "(no name)")}</span>${walletLabel}
+        <span class="card-name">${escape(app.name || "(no name)")}${walletLabel}</span>
         <div class="card-head-right">
           ${headerExtras}
           ${currentFilter === "customer" ? "" : `<span class="card-status status-${app.status}">${app.status}</span>`}
@@ -676,7 +705,7 @@ async function handleAction(id, action, btn) {
   }
 
   if (action === "mark-as-banned") {
-    const name = card.querySelector(".card-name").textContent;
+    const name = card.dataset.name;
     if (!(await confirmDialog({
       title: "Confirm ban",
       message: "Confirm you've DISABLED " + name + " in Firebase Authentication?\n\nThis will also DELETE all of their orders.",
@@ -727,7 +756,7 @@ async function handleAction(id, action, btn) {
   }
 
   if (action === "mark-as-unbanned") {
-    const name = card.querySelector(".card-name").textContent;
+    const name = card.dataset.name;
     if (!(await confirmDialog({
       title: "Confirm unban",
       message: "Confirm you've RE-ENABLED " + name + " in Firebase Authentication?",
@@ -759,8 +788,7 @@ async function handleAction(id, action, btn) {
     const ok = await passwordConfirmDialog({
       title: "Delete application",
       message:
-        "Delete " + name + "'s application?\n\n" +
-        "All of their data (orders, wallet, history, top-ups, notifications) will also be deleted. This cannot be undone.",
+        "Delete " + name + "'s application? This cannot be undone.",
       confirmLabel: "Delete",
       danger: true,
       verify: verifyAdminPassword
@@ -783,7 +811,7 @@ async function handleAction(id, action, btn) {
   }
 
   if (action === "wipe-data") {
-    const name = card.querySelector(".card-name").textContent;
+    const name = card.dataset.name;
     const email = card.dataset.email || "";
     const ok = await passwordConfirmDialog({
       title: "Wipe data for " + name,
