@@ -243,6 +243,7 @@
           const itemsHtml = mealsForDay.map((m) => `
             <div class="menu-pick">
               <span class="menu-pick-name">${escape(m.name)}</span>
+              ${m.description ? `<span class="menu-pick-desc">${escape(m.description)}</span>` : ''}
               <span class="menu-pick-price">${formatTk(m.price)}</span>
               <div class="qty-stepper">
                 <button type="button" class="qty-btn" data-step="-1" aria-label="Decrease" ${closed ? "disabled" : ""}>−</button>
