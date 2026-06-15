@@ -230,11 +230,12 @@
 
           if (!mealsForDay.length) {
             return `
-              <section class="menu-day is-empty" data-date-key="${key}">
+              <section class="menu-day is-empty${closed ? " is-locked" : ""}" data-date-key="${key}">
                 <header class="menu-day-head">
                   <h3><span class="menu-day-tag">Tomorrow</span> · ${formatDateLabel(d)}</h3>
+                  ${closed ? '<span class="card-status status-locked">Locked</span>' : ''}
                 </header>
-                <p class="muted" style="margin: 4px 0 0;">${closed ? "Locked" : "Check back soon — menu not posted yet."}</p>
+                <p class="muted" style="margin: 4px 0 0;">${closed ? "" : "Check back soon — menu not posted yet."}</p>
               </section>
             `;
           }
