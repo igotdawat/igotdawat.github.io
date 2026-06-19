@@ -147,7 +147,8 @@ dawat/
 │   ├── debitWallet.js             # Direct wallet debit
 │   ├── refundWallet.js            # Wallet refund
 │   ├── confirmTopup.js            # Admin: Confirm top-up
-│   └── rejectTopup.js             # Admin: Reject top-up
+│   ├── rejectTopup.js             # Admin: Reject top-up
+│   └── wipeUserData.js            # Admin: Wipe all user data
 │
 ├── 📂 js/                         # Client-side Modules
 │   ├── firebase.js                # Firebase initialization
@@ -278,6 +279,14 @@ POST /api/confirmTopup
 POST /api/rejectTopup
   - Admin rejects top-up
   - Input: { topupId }
+
+#### Admin Operations
+```
+POST /api/wipeUserData
+  - Admin: Delete all user data (not user account)
+  - Input: { email }
+  - Deletes: orders, wallet, topups, history, notifications
+  - Returns: { success, message, totalDeleted }
 ```
 
 ### Database Schema
