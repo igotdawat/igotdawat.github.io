@@ -61,12 +61,12 @@ export default async function handler(req, res) {
       const currentBalance = walletSnap.exists ? Number(walletSnap.data().balance || 0) : 0;
       const newBalance = currentBalance + amount;
 
-      // 4. Update wallet
-      transaction.update(walletRef, {
+      // 4. Update or create wallet
+      transaction.set(walletRef, {
         balance: newBalance,
         email: topup.userEmail,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true });
 
       // 5. Create wallet history entry
       const historyRef = db.collection('walletHistory').doc();
