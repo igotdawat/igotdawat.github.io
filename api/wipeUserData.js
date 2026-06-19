@@ -26,15 +26,12 @@ export default async function handler(req, res) {
   const adminEmail = decodedToken.email;
   let { email, userId, appId } = req.body;
 
-  console.log("wipeUserData received:", { email, userId, appId, adminEmail });
-
   if (!ADMIN_EMAILS.map(e => e.toLowerCase()).includes((adminEmail || '').toLowerCase())) {
     return res.status(403).json({ error: 'Not authorized' });
   }
 
   // If appId is provided but no email/userId, look up the application document
   if (appId && (!email || email === null) && (!userId || userId === null)) {
-    console.log("Looking up application by appId:", appId);
     try {
       const appDoc = await db.collection('applications').doc(appId).get();
       if (!appDoc.exists) {
@@ -43,7 +40,6 @@ export default async function handler(req, res) {
       const appData = appDoc.data();
       email = appData.email || appId; // Use appId as email if document has no email field
       userId = appData.userId;
-      console.log("Found application:", { email, userId });
     } catch (err) {
       console.error("Application lookup failed:", err);
       return res.status(400).json({ error: 'Application lookup failed' });
@@ -52,11 +48,9 @@ export default async function handler(req, res) {
 
   // If userId is provided but no email, look it up from Firebase Auth
   if (userId && !email) {
-    console.log("Looking up user by userId:", userId);
     try {
       const userRecord = await admin.auth().getUser(userId);
       email = userRecord.email;
-      console.log("Found user email:", email);
     } catch (err) {
       console.error("User lookup failed:", err);
       return res.status(400).json({ error: 'User not found' });

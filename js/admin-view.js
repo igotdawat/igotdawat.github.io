@@ -742,7 +742,6 @@ async function handleAction(id, action, btn) {
         userId: userId || null,
         appId: id
       };
-      console.log("Delete payload:", payload);
       const response = await fetch(window.location.origin + "/api/wipeUserData", {
         method: "POST",
         headers: {
