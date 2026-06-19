@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   }
 
   // If appId is provided but no email/userId, look up the application document
-  if (appId && !email && !userId) {
+  if (appId && (!email || email === null) && (!userId || userId === null)) {
     console.log("Looking up application by appId:", appId);
     try {
       const appDoc = await db.collection('applications').doc(appId).get();

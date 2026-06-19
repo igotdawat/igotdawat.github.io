@@ -738,8 +738,8 @@ async function handleAction(id, action, btn) {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
       const payload = {
-        email: email || undefined,
-        userId: userId || undefined,
+        email: email || null,
+        userId: userId || null,
         appId: id
       };
       console.log("Delete payload:", payload);
@@ -787,8 +787,8 @@ async function handleAction(id, action, btn) {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
       const payload = {
-        email: email || undefined,
-        userId: userId || undefined,
+        email: email || null,
+        userId: userId || null,
         appId: id
       };
       const response = await fetch(window.location.origin + "/api/wipeUserData", {
