@@ -737,7 +737,11 @@ async function handleAction(id, action, btn) {
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
-      const payload = { email: email || undefined, userId: userId || undefined };
+      const payload = {
+        email: email || undefined,
+        userId: userId || undefined,
+        appId: id
+      };
       console.log("Delete payload:", payload);
       const response = await fetch(window.location.origin + "/api/wipeUserData", {
         method: "POST",
@@ -782,13 +786,18 @@ async function handleAction(id, action, btn) {
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
+      const payload = {
+        email: email || undefined,
+        userId: userId || undefined,
+        appId: id
+      };
       const response = await fetch(window.location.origin + "/api/wipeUserData", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ email: email || undefined, userId: userId || undefined })
+        body: JSON.stringify(payload)
       });
       if (!response.ok) {
         const data = await response.json();
