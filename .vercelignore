@@ -1,6 +1,14 @@
 .git
 .gitignore
+.gitattributes
 node_modules
 .claude/
 .env.local
 *.md
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+.cache/
+.firebase/
