@@ -178,8 +178,9 @@
       let currentName = "";
 
       onAuthStateChanged(auth, async (user) => {
-        console.log("Auth state changed:", { uid: user?.uid, email: user?.email });
         if (!user) { window.location.href = "/"; return; }
+        const idTokenResult = await user.getIdTokenResult();
+        console.log("Auth state changed:", { uid: user?.uid, email: user?.email, tokenEmail: idTokenResult?.claims?.email });
         if (ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
           await show404(); return;
         }
