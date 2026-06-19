@@ -252,7 +252,6 @@
           const rawAmt = String(fd.get("amount") || "").trim();
           const amount = Math.round(Number(rawAmt));
           const bankRef = String(fd.get("bankRef") || "").trim();
-          console.log("[top-up] raw input:", JSON.stringify(rawAmt), "parsed:", amount);
           if (!Number.isFinite(amount) || amount < 100) {
             topupMsg.textContent = "Minimum top-up is ৳100.";
             topupMsg.classList.add("is-err"); topupMsg.hidden = false; return;
