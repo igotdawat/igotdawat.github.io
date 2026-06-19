@@ -2,7 +2,7 @@
 // Closed midnight-12:30 PM each day. Per-date cutoff: 10 PM night before delivery
 export const ORDER_CONFIG = {
   OPEN_HOUR: 12,
-  OPEN_MINUTE: 30,
+  OPEN_MINUTE: 1,
   CLOSE_HOUR: 23,
   CLOSE_MINUTE: 59
 };
