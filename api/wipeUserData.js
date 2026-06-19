@@ -41,7 +41,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Application not found' });
       }
       const appData = appDoc.data();
-      email = appData.email;
+      email = appData.email || appId; // Use appId as email if document has no email field
       userId = appData.userId;
       console.log("Found application:", { email, userId });
     } catch (err) {
