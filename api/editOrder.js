@@ -126,6 +126,6 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Order does not belong to this user' });
     }
 
-    return res.status(500).json({ error: 'Failed to edit order' });
+    return res.status(500).json({ error: error.message || 'Failed to edit order' });
   }
 }

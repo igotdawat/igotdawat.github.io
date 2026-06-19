@@ -395,7 +395,7 @@
                   userEmail: email,
                   amount: Number(cancelledOrder.total),
                   orderId: cancelledOrder.id,
-                  note: "Refund · Order (cancelled)"
+                  note: "Order (cancelled) for " + cancelledOrder.forDate
                 });
               } catch (walletErr) {
                 console.error("Wallet refund failed:", walletErr);
