@@ -86,11 +86,13 @@ export default async function handler(req, res) {
         });
 
         // Find and update the existing wallet history entry for this order
-        const historyQuery = db.collection('walletHistory')
+        // Note: Can't use transaction.get() on queries, must fetch outside transaction
+        const historySnap = await db.collection('walletHistory')
           .where('userId', '==', userId)
-          .where('ref', '==', orderId);
+          .where('ref', '==', orderId)
+          .limit(1)
+          .get();
 
-        const historySnap = await transaction.get(historyQuery);
         if (!historySnap.empty) {
           const histDocRef = historySnap.docs[0].ref;
           const newDebitAmount = -total;
