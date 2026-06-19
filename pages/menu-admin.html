@@ -54,16 +54,16 @@
     </div>
 
     <script type="module">
-      import { auth, db } from "./firebase.js";
+      import { auth, db } from "./js/firebase.js";
       import {
         onAuthStateChanged, signOut
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
         collection, getDocs, getDoc, setDoc, doc, query, orderBy, serverTimestamp, onSnapshot
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { WEEKDAY_ORDER, WEEKDAY_LABELS, formatTk } from "./app-utils.js";
-      import { mountNotificationBell } from "./notifications.js";
-      import { show404 } from "./app-utils.js";
+      import { WEEKDAY_ORDER, WEEKDAY_LABELS, formatTk } from "./js/app-utils.js";
+      import { mountNotificationBell } from "./js/notifications.js";
+      import { show404 } from "./js/app-utils.js";
       import { ADMIN_EMAILS } from "./js/admin-config.js";
       import { escape } from "./js/admin-helpers.js";
 

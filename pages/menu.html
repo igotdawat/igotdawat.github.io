@@ -55,7 +55,7 @@
     </div>
 
     <script type="module">
-      import { auth, db } from "./firebase.js";
+      import { auth, db } from "./js/firebase.js";
       import {
         onAuthStateChanged,
         signOut
@@ -64,10 +64,10 @@
         collection, query, where, getDocs, getDoc, doc,
         addDoc, updateDoc, onSnapshot, serverTimestamp
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { nextNDates, toDateKey, formatDateLabel, formatTk, orderingClosed, pastCutoff, weekdayKey, nextOrderingOpen, formatNextOpenLabel, formatTodaysCloseTime, show404 } from "./app-utils.js";
-      import { subscribeWallet, debitForOrder } from "./wallet.js";
-      import { mountNotificationBell, notifyAdmins } from "./notifications.js";
-      import { confirmDialog, alertDialog } from "./modal.js";
+      import { nextNDates, toDateKey, formatDateLabel, formatTk, orderingClosed, pastCutoff, weekdayKey, nextOrderingOpen, formatNextOpenLabel, formatTodaysCloseTime, show404 } from "./js/app-utils.js";
+      import { subscribeWallet, debitForOrder } from "./js/wallet.js";
+      import { mountNotificationBell, notifyAdmins } from "./js/notifications.js";
+      import { confirmDialog, alertDialog } from "./js/modal.js";
       import { ADMIN_EMAILS } from "./js/admin-config.js";
       import { escape } from "./js/admin-helpers.js";
 

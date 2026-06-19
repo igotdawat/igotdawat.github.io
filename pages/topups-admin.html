@@ -53,18 +53,18 @@
     </div>
 
     <script type="module">
-      import { auth, db } from "./firebase.js";
+      import { auth, db } from "./js/firebase.js";
       import {
         onAuthStateChanged, signOut
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
         collection, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { confirmTopup, rejectTopup } from "./wallet.js";
-      import { formatTk } from "./app-utils.js";
-      import { notify, mountNotificationBell } from "./notifications.js";
-      import { confirmDialog, alertDialog } from "./modal.js";
-      import { show404 } from "./app-utils.js";
+      import { confirmTopup, rejectTopup } from "./js/wallet.js";
+      import { formatTk } from "./js/app-utils.js";
+      import { notify, mountNotificationBell } from "./js/notifications.js";
+      import { confirmDialog, alertDialog } from "./js/modal.js";
+      import { show404 } from "./js/app-utils.js";
       import { ADMIN_EMAILS } from "./js/admin-config.js";
       import { escape } from "./js/admin-helpers.js";
 
