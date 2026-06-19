@@ -9,6 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { confirmDialog } from "./modal.js";
 import { ADMIN_EMAILS } from "./admin-config.js";
+import { escapeHtml } from "./admin-helpers.js";
 
 const BELL_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
 const FIRESTORE_BATCH_LIMIT = 450;
@@ -62,12 +63,6 @@ function fmtWhen(ts) {
   if (diff < 3600) return Math.floor(diff / 60) + "m ago";
   if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
-
-function escape(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  })[c]);
 }
 
 // Mount bell icon + notification panel (listens to user and admin notifications)
@@ -148,11 +143,11 @@ export function mountNotificationBell({ user }) {
     const shown = rows.slice(start, start + PAGE_SIZE);
     const items = shown.map((r) => {
       const when = fmtWhen(r.createdAt);
-      const cls = "notif-item" + (r.read ? "" : " is-unread") + " type-" + escape(r.type || "info");
+      const cls = "notif-item" + (r.read ? "" : " is-unread") + " type-" + escapeHtml(r.type || "info");
       const link = r.link
-        ? ` <a class="notif-link" href="${escape(r.link)}">${escape(r.linkText || "View")}</a>`
+        ? ` <a class="notif-link" href="${escapeHtml(r.link)}">${escapeHtml(r.linkText || "View")}</a>`
         : "";
-      return `<li class="${cls}"><span class="notif-msg">${escape(r.message).replace(/\n/g, "<br>")}</span>${link}<span class="notif-when">${when}</span></li>`;
+      return `<li class="${cls}"><span class="notif-msg">${escapeHtml(r.message).replace(/\n/g, "<br>")}</span>${link}<span class="notif-when">${when}</span></li>`;
     }).join("");
     const pager = totalPages > 1
       ? `<li class="notif-pager">
@@ -286,8 +281,8 @@ export async function markAllRead({ userId, includeAdmin = false }) {
   if (includeAdmin) {
     queries.push(query(collection(db, "notifications"), where("audience", "==", "admin"), limit(200)));
   }
-  for (const q of queries) {
-    const snap = await getDocs(q);
+  const snaps = await Promise.all(queries.map(q => getDocs(q)));
+  for (const snap of snaps) {
     if (snap.empty) continue;
     const batch = writeBatch(db);
     let n = 0;
@@ -320,9 +315,9 @@ export async function clearAll({ userId, includeAdmin = false }) {
   if (includeAdmin) {
     queries.push(query(collection(db, "notifications"), where("audience", "==", "admin"), limit(200)));
   }
+  const snaps = await Promise.all(queries.map(q => getDocs(q)));
   const seen = new Set();
-  for (const q of queries) {
-    const snap = await getDocs(q);
+  for (const snap of snaps) {
     if (snap.empty) continue;
     let batch = writeBatch(db);
     let n = 0;

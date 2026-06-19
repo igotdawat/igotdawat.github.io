@@ -13,7 +13,7 @@ import {
 
 const FIRESTORE_BATCH_LIMIT = 450;
 
-export function escape(s) {
+export function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -21,6 +21,8 @@ export function escape(s) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+export const escape = escapeHtml;
 
 export async function purgeOrdersForEmail(email) {
   const e = String(email || "").toLowerCase();
@@ -36,6 +38,7 @@ export async function purgeAllUserDataForEmail(email) {
   const e = String(email || "").toLowerCase();
   if (!e) return;
   let foundUid = null;
+
   try {
     const wsnap = await getDocs(query(collection(db, "wallets"), where("email", "==", e)));
     for (const d of wsnap.docs) {
@@ -45,9 +48,13 @@ export async function purgeAllUserDataForEmail(email) {
   } catch (err) {
     console.error("Wallet purge failed for " + e, err);
   }
+
   const cols = ["orders", "walletHistory", "topups"];
-  for (const col of cols) {
-    const snap = await getDocs(query(collection(db, col), where("userEmail", "==", e)));
+  const collectionSnaps = await Promise.all(
+    cols.map(col => getDocs(query(collection(db, col), where("userEmail", "==", e))))
+  );
+
+  for (const snap of collectionSnaps) {
     if (snap.empty) continue;
     if (!foundUid) {
       const withUid = snap.docs.find((d) => d.data().userId);
@@ -62,6 +69,7 @@ export async function purgeAllUserDataForEmail(email) {
     }
     if (n) await batch.commit();
   }
+
   const seen = new Set();
   const deleteSnap = async (snap) => {
     if (snap.empty) return;
@@ -77,9 +85,15 @@ export async function purgeAllUserDataForEmail(email) {
     }
     if (n) await batch.commit();
   };
-  await deleteSnap(await getDocs(query(collection(db, "notifications"), where("userEmail", "==", e))));
-  if (foundUid) {
-    await deleteSnap(await getDocs(query(collection(db, "notifications"), where("userId", "==", foundUid))));
+
+  const notifSnaps = await Promise.all([
+    getDocs(query(collection(db, "notifications"), where("userEmail", "==", e))),
+    foundUid ? getDocs(query(collection(db, "notifications"), where("userId", "==", foundUid))) : Promise.resolve(null)
+  ]);
+
+  await deleteSnap(notifSnaps[0]);
+  if (notifSnaps[1]) {
+    await deleteSnap(notifSnaps[1]);
   }
 }
 
