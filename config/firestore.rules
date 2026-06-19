@@ -33,28 +33,21 @@ service cloud.firestore {
     }
 
     // ===== ORDERS COLLECTION =====
-    // Users can create/read/update/delete their own orders
-    // (Cloud Functions not deployed on free plan, so using direct Firestore)
+    // SECURITY CRITICAL: All order operations via Vercel API only (Admin SDK)
+    // NO direct client-side order creation/modification allowed
     match /orders/{document=**} {
       allow read: if request.auth != null &&
         (request.auth.uid == resource.data.userId ||
          request.auth.token.email == resource.data.userEmail ||
          isAdmin(request.auth.token.email));
 
-      // Orders created only via Admin SDK API endpoints (placeOrder, editOrder, etc.)
-      // Client cannot create orders directly
-      allow create: if false;
-
-      // Only order owner (userId) or admin can update/delete
-      allow update, delete: if request.auth != null &&
-        (request.auth.uid == resource.data.userId ||
-         isAdmin(request.auth.token.email));
+      // BLOCK ALL writes from client (only Admin SDK API can create/update)
+      allow create, update, delete: if false;
     }
 
     // ===== WALLETS (keyed by userId) =====
-    // SECURITY CRITICAL: Only Vercel API can UPDATE wallets (via Firebase Admin SDK)
+    // SECURITY CRITICAL: NO client-side writes allowed (only Vercel API via Admin SDK)
     // Users can READ their own wallet balance
-    // Admins can UPDATE for manual adjustments (confirmed topups, corrections)
     match /wallets/{userId} {
       // Users can only read their own wallet
       allow read: if request.auth != null && request.auth.uid == userId;
@@ -62,18 +55,13 @@ service cloud.firestore {
       // Admins can read all wallets for monitoring
       allow read: if request.auth != null && isAdmin(request.auth.token.email);
 
-      // Admins can update wallets for topup confirmations and manual adjustments
-      allow update: if request.auth != null && isAdmin(request.auth.token.email);
-
-      // DENY all client-side writes (only Vercel API can update via server context)
-      allow create: if false;
-      allow delete: if false;
+      // BLOCK ALL client-side writes (only Vercel API Admin SDK can update)
+      allow create, update, delete: if false;
     }
 
     // ===== WALLET HISTORY =====
-    // SECURITY CRITICAL: Only Vercel API can CREATE entries (via server context)
+    // SECURITY CRITICAL: Only Vercel API can CREATE entries (via Admin SDK)
     // Users can READ their own transaction history
-    // Admins can also create history entries for manual adjustments
     match /walletHistory/{document=**} {
       // Users can read their own transaction history
       allow read: if request.auth != null &&
@@ -81,11 +69,8 @@ service cloud.firestore {
          request.auth.token.email == resource.data.userEmail ||
          isAdmin(request.auth.token.email));
 
-      // Admins can create history entries (for manual adjustments, topup confirmations)
-      allow create: if request.auth != null && isAdmin(request.auth.token.email);
-
-      // DENY all client-side writes (only Vercel API can create via server context)
-      allow write: if false;
+      // BLOCK ALL client-side writes (only Vercel API Admin SDK can create)
+      allow create, update, delete: if false;
     }
 
     // ===== TOP-UPS =====
@@ -112,16 +97,24 @@ service cloud.firestore {
     }
 
     // ===== NOTIFICATIONS =====
+    // SECURITY: Only admin can CREATE (via Admin SDK for system notifications)
+    // Users can READ and UPDATE (read: true) only
     match /notifications/{document=**} {
-      allow create: if request.resource.data.audience in ["admin", "user"];
-      allow read: if request.auth != null;
-      allow update: if request.auth != null && 
+      // Block client-side creation (only admins via Admin SDK)
+      allow create: if false;
+
+      allow read: if request.auth != null &&
         (isAdmin(request.auth.token.email) ||
-         (request.auth.uid == resource.data.userId && 
+         request.auth.uid == resource.data.userId);
+
+      // Users can only update their own notification's read status
+      allow update: if request.auth != null &&
+        (isAdmin(request.auth.token.email) ||
+         (request.auth.uid == resource.data.userId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"])));
-      allow delete: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || 
-         isAdmin(request.auth.token.email));
+
+      // Only admins can delete
+      allow delete: if request.auth != null && isAdmin(request.auth.token.email);
     }
 
     // ===== ADMIN OPERATIONS (audit trail) =====
