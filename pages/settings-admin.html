@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dawat · Settings</title>
+    <title>Dawat · Admin Settings</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../css/style.css" />
     <meta name="view-transition" content="same-origin" />
   </head>
   <body class="admin-page">
@@ -20,7 +20,7 @@
       <div class="tagline">★ আপনার নিমন্ত্রণ ★</div>
     </div>
 
-    <h1>Settings</h1>
+    <h1>Admin Settings</h1>
     <p id="settings-subtitle">Loading<span class="loading-dots"><span></span><span></span><span></span></span></p>
 
     <div class="admin-view" id="settings-view" hidden>
@@ -29,21 +29,19 @@
           Signed in as <span id="who-email">—</span>
         </div>
         <div class="toolbar-actions">
-          <a id="back-link" href="menu" hidden></a>
           <button type="button" id="signout-btn" class="ghost-btn">Sign out</button>
         </div>
       </div>
 
       <nav class="admin-nav" id="settings-nav">
-        <a href="menu">Menu</a>
-        <a href="orders">My Orders</a>
-        <a href="wallet">Wallet</a>
-        <a href="settings" class="is-active">Settings</a>
+        <a href="applications">Applications</a>
+        <a href="users">Users</a>
+        <a href="meals">Meals</a>
+        <a href="menu-admin">Menu</a>
+        <a href="orders-admin">Orders</a>
+        <a href="topups-admin">Top-ups</a>
+        <a href="settings-admin" class="is-active">Settings</a>
       </nav>
-
-      <p id="force-pw-banner" class="form-msg is-err" hidden style="text-align:center; margin: 12px 0 4px;">
-        ⚠ Please set your own password before continuing.
-      </p>
 
       <!-- ===== Change password ===== -->
       <div class="form-wrap" style="margin-top: 20px;">
@@ -78,6 +76,18 @@
         </form>
       </div>
 
+      <!-- ===== Wipe all user data ===== -->
+      <div class="form-wrap" style="margin-top: 32px;">
+        <h2 style="margin: 0 0 14px; font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--gold);">Admin tools</h2>
+        <div style="padding: 12px; background-color: rgba(255, 209, 102, 0.05); border: 2px solid #ffd166; margin-bottom: 16px;">
+          <p style="margin: 0 0 12px 0; font-size: 12px; line-height: 1.5;">
+            ⚠ <strong>Wipe all user data</strong> will permanently delete all orders, wallet balances, wallet history, top-ups, and notifications for every non-admin user. Admin accounts are preserved. This action cannot be undone.
+          </p>
+          <button type="button" id="wipe-all-btn" class="danger-btn">▶ Wipe all user data</button>
+          <p id="wipe-msg" class="form-msg" hidden></p>
+        </div>
+      </div>
+
     </div>
 
     <script type="module">
@@ -89,24 +99,25 @@
         reauthenticateWithCredential,
         EmailAuthProvider
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-      import {
-        collection, query, where, getDocs,
-        doc, updateDoc
-      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { mountNotificationBell } from "./notifications.js";
+      import { passwordConfirmDialog, alertDialog } from "./modal.js";
+      import { purgeAllUsersData } from "./admin-helpers.js";
+      import { show404 } from "./app-utils.js";
       import { ADMIN_EMAILS } from "./admin-config.js";
 
-      const subtitle   = document.getElementById("settings-subtitle");
-      const view       = document.getElementById("settings-view");
-      const whoEmail   = document.getElementById("who-email");
-      const signoutBtn = document.getElementById("signout-btn");
-      const backLink   = document.getElementById("back-link");
-      const forceBanner= document.getElementById("force-pw-banner");
-      const pwForm     = document.getElementById("pw-form");
+      const subtitle    = document.getElementById("settings-subtitle");
+      const view        = document.getElementById("settings-view");
+      const whoEmail    = document.getElementById("who-email");
+      const signoutBtn  = document.getElementById("signout-btn");
+      const pwForm      = document.getElementById("pw-form");
+      const wipeAllBtn  = document.getElementById("wipe-all-btn");
+      const pwMsg       = document.getElementById("pw-msg");
+      const wipeMsg     = document.getElementById("wipe-msg");
 
       // Show/hide toggles for all 3 password fields (same UX as login).
       const EYE_OPEN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
       const EYE_OFF_SVG  = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a19.77 19.77 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a19.85 19.85 0 0 1-3.17 4.19M9.88 9.88a3 3 0 1 0 4.24 4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
       pwForm.querySelectorAll(".pw-toggle").forEach((btn) => {
         btn.addEventListener("click", () => {
           const input = document.getElementById(btn.dataset.toggle);
@@ -118,17 +129,27 @@
           btn.setAttribute("title",      showing ? "Show password" : "Hide password");
         });
       });
-      const pwMsg      = document.getElementById("pw-msg");
 
-      // Check if we arrived here due to first-login gate (sessionStorage or URL param for backward compat).
-      // Hide the "back to dashboard" link and show warning banner until password is updated.
-      const isForceMode = sessionStorage.getItem('mustChangePassword') === 'true' ||
-                          new URLSearchParams(location.search).get("force") === "1";
-      if (isForceMode) {
-        sessionStorage.removeItem('mustChangePassword');
+      // Verify the currently-signed-in admin's password. Returns true on
+      // success, false on wrong password, throws on network/unknown errors.
+      async function verifyAdminPassword(password) {
+        const u = auth.currentUser;
+        if (!u || !u.email) return false;
+        try {
+          const cred = EmailAuthProvider.credential(u.email, password);
+          await reauthenticateWithCredential(u, cred);
+          return true;
+        } catch (err) {
+          const code = err && err.code ? err.code : "";
+          if (code === "auth/wrong-password" ||
+              code === "auth/invalid-credential" ||
+              code === "auth/invalid-login-credentials" ||
+              code === "auth/user-mismatch") {
+            return false;
+          }
+          throw err;
+        }
       }
-
-      let appDoc = null;
 
       signoutBtn.addEventListener("click", async () => {
         await signOut(auth);
@@ -158,26 +179,10 @@
           const cred = EmailAuthProvider.credential(user.email, current);
           await reauthenticateWithCredential(user, cred);
           await updatePassword(user, next);
-
-          // Clear the first-login flag so the dashboard unlocks.
-          if (appDoc && appDoc.mustChangePassword) {
-            try {
-              await updateDoc(doc(db, "applications", appDoc.id), { mustChangePassword: false });
-              appDoc.mustChangePassword = false;
-            } catch (flagErr) {
-              console.error("Could not clear mustChangePassword flag:", flagErr);
-            }
-          }
-
           pwForm.reset();
           pwMsg.textContent = "✓ Password updated.";
           pwMsg.classList.add("is-ok");
           pwMsg.hidden = false;
-
-          if (isForceMode) {
-            // Send them on to the real dashboard after a beat.
-            setTimeout(() => { window.location.href = "menu"; }, 900);
-          }
         } catch (err) {
           console.error(err);
           const code = err.code || "";
@@ -197,55 +202,72 @@
         }
       });
 
+      // ----- Wipe all user data -----
+      wipeAllBtn.addEventListener("click", async () => {
+        const ok = await passwordConfirmDialog({
+          title: "Wipe all user data",
+          message:
+            "This will permanently delete all orders, wallet balances, wallet history, top-ups, and notifications for every non-admin user.\n\n" +
+            "Admin accounts will be preserved. This cannot be undone.",
+          confirmLabel: "Wipe all user data",
+          danger: true,
+          verify: verifyAdminPassword
+        });
+        if (!ok) return;
+
+        wipeAllBtn.disabled = true;
+        wipeMsg.hidden = true;
+        wipeMsg.classList.remove("is-ok", "is-err");
+
+        try {
+          // Purge all user data (excluding admins)
+          const count = await purgeAllUsersData(ADMIN_EMAILS);
+          wipeAllBtn.disabled = false;
+          await alertDialog({
+            title: "Wiped",
+            message: "All data for " + count + " user" + (count !== 1 ? "s" : "") + " has been deleted. Admin accounts remain intact."
+          });
+          wipeMsg.textContent = "✓ Data wiped for " + count + " user(s).";
+          wipeMsg.classList.add("is-ok");
+        } catch (err) {
+          console.error(err);
+          wipeAllBtn.disabled = false;
+          await alertDialog({
+            title: "Wipe failed",
+            message: "Could not wipe user data. Try again."
+          });
+          wipeMsg.textContent = "Error during wipe. Check console.";
+          wipeMsg.classList.add("is-err");
+        } finally {
+          wipeMsg.hidden = false;
+        }
+      });
+
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          window.location.href = "index";
+          window.location.replace("/");
           return;
         }
-        const isAdmin = ADMIN_EMAILS.includes((user.email || "").toLowerCase());
 
-        // Redirect admins to the dedicated admin settings page
-        if (isAdmin) {
-          window.location.href = "settings-admin";
+        const isAdmin = ADMIN_EMAILS.includes((user.email || "").toLowerCase());
+        if (!isAdmin) {
+          // Non-admin users should not access this page.
+          await show404();
           return;
         }
 
         whoEmail.textContent = user.email;
-        subtitle.textContent = "Manage your account.";
+        subtitle.textContent = "Manage admin settings.";
         view.hidden          = false;
         document.getElementById("pw-current")?.focus();
 
         try {
-          const q = query(
-            collection(db, "applications"),
-            where("email", "==", (user.email || "").toLowerCase())
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            const d = snap.docs[0];
-            appDoc = { id: d.id, ...d.data() };
-          }
-        } catch (err) {
-          console.error("Could not load application doc:", err);
-        }
-
-        // Access gate: block only when application is in an explicitly
-        // blocking state. Missing doc is treated as allowed.
-        if (appDoc && (appDoc.status === "banned" || appDoc.status === "rejected" || appDoc.status === "pending")) {
-          await signOut(auth);
-          window.location.replace("index");
-          return;
-        }
-
-        // Lock down the page in force-mode.
-        if (isForceMode || (appDoc && appDoc.mustChangePassword)) {
-          forceBanner.hidden  = false;
-          const nav = document.getElementById("settings-nav");
-          if (nav) nav.hidden = true;
-        } else {
           mountNotificationBell({ user });
+        } catch (err) {
+          console.error("Could not mount notification bell:", err);
         }
       });
     </script>
   </body>
 </html>
+

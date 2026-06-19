@@ -10,7 +10,7 @@
          - VT323          : terminal-style pixel, used for body text + inputs
          - Jacquard 12    : gothic pixel display (optional, swap-in for the wordmark) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../css/style.css" />
   </head>
   <body>
     <!-- Starfield container: spans the viewport. The mask on this div
@@ -90,14 +90,14 @@
 
     <!-- ===== Randomize the starfield on every page load =====
          Shared starfield script — see stars.js for details. -->
-    <script src="stars.js"></script>
+    <script src="../js/stars.js"></script>
 
     <!-- ===== Firestore wiring =====
          ES module: imports the shared `db` from firebase.js and writes
          each submitted application as a new doc in the `applications`
          collection with status: "pending". Admin reviews these later. -->
     <script type="module">
-      import { db, auth } from "./firebase.js";
+      import { db, auth } from "./js/firebase.js";
       import {
         collection,
         addDoc,

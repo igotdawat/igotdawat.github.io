@@ -1,4 +1,5 @@
-// Shared admin helpers: purge functions used by both admin-view.js and settings-admin.html.
+// Admin purge functions: delete user data (wallets, orders, history, topups, notifications)
+// Used by settings-admin.html and admin-view.js
 
 import { db } from "./firebase.js";
 import {
@@ -10,8 +11,6 @@ import {
   writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// Purge all data for a specific user email. Deletes wallets, orders,
-// wallet history, top-ups, and notifications for that email.
 export async function purgeAllUserDataForEmail(email) {
   const e = String(email || "").toLowerCase();
   if (!e) return;
@@ -22,7 +21,7 @@ export async function purgeAllUserDataForEmail(email) {
       if (!foundUid) foundUid = d.id;
       await deleteDoc(d.ref);
     }
-  } catch (err) { console.error("wallets:", err); }
+  } catch (err) {}
   const cols = ["orders", "walletHistory", "topups"];
   for (const col of cols) {
     const snap = await getDocs(query(collection(db, col), where("userEmail", "==", e)));
@@ -61,8 +60,6 @@ export async function purgeAllUserDataForEmail(email) {
   }
 }
 
-// Purge all user data (excluding admins). Fetches all applications,
-// collects their emails (excluding admin emails), and purges each user's data.
 export async function purgeAllUsersData(excludeEmails = []) {
   const excluded = new Set((excludeEmails || []).map((e) => String(e || "").toLowerCase()));
   const allEmails = new Set();
@@ -76,7 +73,6 @@ export async function purgeAllUsersData(excludeEmails = []) {
       }
     });
   } catch (err) {
-    console.error("Error fetching applications:", err);
     throw err;
   }
 
@@ -86,9 +82,7 @@ export async function purgeAllUsersData(excludeEmails = []) {
     try {
       await purgeAllUserDataForEmail(email);
       count++;
-    } catch (err) {
-      console.error("Error purging user " + email + ":", err);
-    }
+    } catch (err) {}
   }
 
   return count;

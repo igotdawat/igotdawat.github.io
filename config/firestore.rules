@@ -1,0 +1,134 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== ADMIN HELPER FUNCTION =====
+    // Check if user is in the admin email list
+    function isAdmin(email) {
+      return email in ['ihavedawat@gmail.com', 'igotdawat@gmail.com'];
+    }
+
+    // ===== Public (anyone can read) =====
+    match /meals/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdmin(request.auth.token.email);
+    }
+
+    match /weeklyMenu/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdmin(request.auth.token.email);
+    }
+
+    // ===== Admin-only =====
+    match /users/{document=**} {
+      allow read, write: if request.auth != null && isAdmin(request.auth.token.email);
+    }
+
+    match /applications/{appId} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if request.auth != null && (isAdmin(request.auth.token.email) || request.resource.data.email == request.auth.token.email);
+      allow delete: if request.auth != null && isAdmin(request.auth.token.email);
+    }
+
+    // ===== ORDERS COLLECTION =====
+    // Users can create/read/update/delete their own orders
+    // (Cloud Functions not deployed on free plan, so using direct Firestore)
+    match /orders/{document=**} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         request.auth.token.email == resource.data.userEmail ||
+         isAdmin(request.auth.token.email));
+      
+      allow create: if request.auth != null;
+      
+      allow update, delete: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         isAdmin(request.auth.token.email));
+    }
+
+    // ===== WALLETS (keyed by userId) =====
+    // SECURITY CRITICAL: Users can only READ their own wallet balance.
+    // ALL wallet modifications must go through Cloud Functions.
+    // Admins can update for manual adjustments (confirmed topups, corrections).
+    match /wallets/{userId} {
+      // Users can only read their own wallet
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins can read all wallets for monitoring
+      allow read: if request.auth != null && isAdmin(request.auth.token.email);
+      
+      // Admins can update wallets for topup confirmations and manual adjustments
+      allow update: if request.auth != null && isAdmin(request.auth.token.email);
+      
+      // DENY all other writes
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    // ===== WALLET HISTORY =====
+    // SECURITY CRITICAL: Users can only READ transaction history.
+    // ALL transaction entries must be created by Cloud Functions or admins.
+    match /walletHistory/{document=**} {
+      // Users can read their own transaction history
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         request.auth.token.email == resource.data.userEmail ||
+         isAdmin(request.auth.token.email));
+      
+      // Admins can create history entries (for manual adjustments, topup confirmations)
+      allow create: if request.auth != null && isAdmin(request.auth.token.email);
+      
+      // DENY all other writes
+      allow write: if false;
+    }
+
+    // ===== TOP-UPS =====
+    // SECURITY: Users can CREATE requests (status="pending" only).
+    // Admins can confirm/reject (update). Users cannot update their own requests.
+    match /topups/{document=**} {
+      // Users can read their own requests; admins can read all
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         request.auth.token.email == resource.data.userEmail ||
+         isAdmin(request.auth.token.email));
+      
+      // Users can create NEW topup requests (pending status)
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.status == "pending" &&
+        request.resource.data.amount > 0;
+      
+      // Admins can update (confirm/reject topups)
+      allow update: if request.auth != null && isAdmin(request.auth.token.email);
+      
+      // Only admins can delete
+      allow delete: if request.auth != null && isAdmin(request.auth.token.email);
+    }
+
+    // ===== NOTIFICATIONS =====
+    match /notifications/{document=**} {
+      allow create: if request.resource.data.audience in ["admin", "user"];
+      allow read: if request.auth != null;
+      allow update: if request.auth != null && 
+        (isAdmin(request.auth.token.email) ||
+         (request.auth.uid == resource.data.userId && 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"])));
+      allow delete: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         isAdmin(request.auth.token.email));
+    }
+
+    // ===== ADMIN OPERATIONS (audit trail) =====
+    match /adminOperations/{document=**} {
+      allow read: if request.auth != null && isAdmin(request.auth.token.email);
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    // ===== Catch-all deny =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

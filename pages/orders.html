@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dawat · My Orders</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../css/style.css" />
     <meta name="view-transition" content="same-origin" />
   </head>
   <body class="admin-page">
@@ -49,7 +49,7 @@
     </div>
 
     <script type="module">
-      import { auth, db } from "./firebase.js";
+      import { auth, db } from "./js/firebase.js";
       import {
         onAuthStateChanged, signOut
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -57,11 +57,11 @@
         collection, query, where, onSnapshot,
         doc, updateDoc, serverTimestamp, getDocs, getDoc, runTransaction
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-      import { formatDateLabel, formatTk, pastCutoff, weekdayKey, show404 } from "./app-utils.js";
-      import { mountNotificationBell, notifyAdmins } from "./notifications.js";
-      import { confirmDialog, alertDialog } from "./modal.js";
-      import { subscribeWallet, creditWallet, getBalance } from "./wallet.js";
-      import { ADMIN_EMAILS } from "./admin-config.js";
+      import { formatDateLabel, formatTk, pastCutoff, weekdayKey, show404 } from "./js/app-utils.js";
+      import { mountNotificationBell, notifyAdmins } from "./js/notifications.js";
+      import { confirmDialog, alertDialog } from "./js/modal.js";
+      import { subscribeWallet, creditWallet, getBalance } from "./js/wallet.js";
+      import { ADMIN_EMAILS } from "./js/admin-config.js";
 
       const subtitle = document.getElementById("orders-subtitle");
       const view     = document.getElementById("orders-view");
@@ -544,3 +544,5 @@
     </script>
   </body>
 </html>
+
+

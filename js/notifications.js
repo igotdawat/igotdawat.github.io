@@ -1,15 +1,6 @@
-// Lightweight in-app notifications.
-// Firestore schema — notifications/{auto}:
-//   userId    : string  (target user uid; "" when audience="admin")
-//   userEmail : string  (target user email; helps with wipe-by-email)
-//   audience  : string  ("user" by default, or "admin" for admin-only)
-//   message   : string  (one-line summary)
-//   link      : string  (optional href, e.g. "wallet.html#history")
-//   linkText  : string  (optional cta label, defaults to "View")
-//   type      : string  ("topup-confirmed" | "topup-declined" |
-//                        "topup-requested" | "order-placed" | ...)
-//   read      : boolean
-//   createdAt : serverTimestamp
+// In-app notification system. Stores in Firestore, displays in bell icon
+// Schema: notifications/{auto} - userId, userEmail, audience ("user"|"admin"),
+//         message, link (optional href), linkText, type, read, createdAt
 
 import { db } from "./firebase.js";
 import {
@@ -33,7 +24,7 @@ export async function notify({ userId, userEmail = "", message, link = "", linkT
   });
 }
 
-// Fire-and-forget admin notification. Visible in the bell of any signed-in admin.
+// Send notification to all signed-in admins (audience="admin")
 export async function notifyAdmins({ message, link = "", linkText = "", type = "info" }) {
   if (!message) return;
   await addDoc(collection(db, "notifications"), {
@@ -46,7 +37,7 @@ export async function notifyAdmins({ message, link = "", linkText = "", type = "
   });
 }
 
-const BLIP_URL = "./minecraft-villager-sound-effect.mp3";
+const BLIP_URL = "../assets/sounds/notification.mp3";
 let blipAudio = null;
 function playBlip() {
   try {
@@ -78,6 +69,7 @@ function escape(s) {
   })[c]);
 }
 
+// Mount bell icon + notification panel (listens to user and admin notifications)
 export function mountNotificationBell({ user }) {
   if (!user || document.getElementById("notif-bell")) return;
   const isAdmin = ADMIN_EMAILS.includes((user.email || "").toLowerCase());
@@ -227,7 +219,7 @@ export function mountNotificationBell({ user }) {
         if (row) row.read = true;
       }
     });
-    markIdsRead(idsToMark).catch((err) => console.error("mark read:", err));
+    markIdsRead(idsToMark).catch(() => {});
   }
 
   btn.addEventListener("click", (e) => {
@@ -254,7 +246,7 @@ export function mountNotificationBell({ user }) {
       danger: true
     });
     if (!ok) return;
-    clearAll({ userId: user.uid, includeAdmin: isAdmin }).catch((err) => console.error("clear:", err));
+    clearAll({ userId: user.uid, includeAdmin: isAdmin }).catch(() => {});
   });
 
   function attach(qRef, key, isFirst) {
@@ -269,7 +261,7 @@ export function mountNotificationBell({ user }) {
       }
       rowsByQuery[key] = incoming;
       render();
-    }, (err) => console.error("notifications " + key + ":", err));
+    }, () => {});
   }
 
   attach(

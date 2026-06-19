@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dawat · Sign In</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="css/style.css" />
     <meta name="view-transition" content="same-origin" />
   </head>
   <body class="login-page">
@@ -55,10 +55,10 @@
       </form>
     </div>
 
-    <script src="stars.js"></script>
+    <script src="js/stars.js"></script>
 
     <script type="module">
-      import { auth } from "./firebase.js";
+      import { auth } from "./js/firebase.js";
       import {
         signInWithEmailAndPassword,
         onAuthStateChanged,
@@ -67,7 +67,7 @@
 
       // Admin emails should never end up on the customer dashboard — bounce
       // them to applications.html instead. Keep this list in sync with admin-view.js.
-      import { ADMIN_EMAILS } from "./admin-config.js";
+      import { ADMIN_EMAILS } from "./js/admin-config.js";
 
       const form   = document.getElementById("login-form");
       const status = document.getElementById("login-status");

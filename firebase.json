@@ -1,0 +1,30 @@
+{
+  "projects": {
+    "default": "igotdawat-v1"
+  },
+  "firestore": {
+    "rules": "config/firestore.rules",
+    "indexes": "config/firestore.indexes.json"
+  },
+  "hosting": {
+    "rewrites": [
+      {
+        "source": "/{page}",
+        "destination": "/pages/{page}.html",
+        "regex": "^/(applications|apply|meals|menu|menu-admin|orders|orders-admin|settings|settings-admin|topups|topups-admin|users|wallet)$"
+      }
+    ]
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  }
+}
