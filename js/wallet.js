@@ -23,12 +23,21 @@ export async function getBalance(userId) {
 
 // User submits topup request after sending money to bank
 export async function requestTopup({ userId, userEmail, amount, bankRef, note }) {
-  return addDoc(collection(db, "topups"), {
+  const payload = {
     userId, userEmail,
     amount: Math.round(Number(amount)),
     bankRef: String(bankRef || "").trim(),
     note: String(note || "").trim(),
     status: "pending",
-    requestedAt: serverTimestamp()
-  });
+    requestedAt: new Date().toISOString()
+  };
+  console.log("Attempting to create topup:", payload);
+  try {
+    const result = await addDoc(collection(db, "topups"), payload);
+    console.log("Success:", result.id);
+    return result;
+  } catch (err) {
+    console.error("Topup creation failed:", err);
+    throw err;
+  }
 }
