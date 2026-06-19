@@ -55,13 +55,13 @@
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
       import {
         collection, query, where, onSnapshot,
-        doc, updateDoc, serverTimestamp, getDocs, getDoc, runTransaction
+        doc, getDocs, getDoc, runTransaction
       } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
       import { formatDateLabel, formatTk, pastCutoff, weekdayKey, show404 } from "./js/app-utils.js";
       import { mountNotificationBell, notifyAdmins } from "./js/notifications.js";
       import { confirmDialog, alertDialog } from "./js/modal.js";
       import { subscribeWallet, getBalance } from "./js/wallet.js";
-      import { secureDebitForOrder, secureRefundForOrder } from "./js/wallet-secure.js";
+      import { secureDebitForOrder } from "./js/wallet-secure.js";
       import { ADMIN_EMAILS } from "./js/admin-config.js";
       import { escape } from "./js/admin-helpers.js";
 
@@ -383,23 +383,25 @@
           const cancelledOrder = ordersById[delBtn.dataset.orderId];
           const email = cancelledOrder ? (cancelledOrder.userEmail || "").toLowerCase() : "";
           try {
-            await updateDoc(doc(db, "orders", delBtn.dataset.orderId), {
-              status:      "cancelled",
-              cancelledAt: serverTimestamp()
+            // Call secure API to cancel order and refund wallet atomically
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) {
+              throw new Error('User not authenticated');
+            }
+            const response = await fetch(window.location.origin + "/api/cancelOrder", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                orderId: delBtn.dataset.orderId
+              })
             });
-            // Refund the order total to wallet via secure API
-            if (cancelledOrder && cancelledOrder.total) {
-              try {
-                await secureRefundForOrder({
-                  userId: auth.currentUser.uid,
-                  userEmail: email,
-                  amount: Number(cancelledOrder.total),
-                  orderId: cancelledOrder.id,
-                  note: "Order (cancelled) for " + cancelledOrder.forDate
-                });
-              } catch (walletErr) {
-                console.error("Wallet refund failed:", walletErr);
-              }
+
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.error || 'Failed to cancel order');
             }
             if (cancelledOrder) {
               const itemList = (cancelledOrder.items || []).map((it) => "  • " + it.name + " ×" + it.qty + " — " + formatTk(it.price * it.qty)).join("\n");
