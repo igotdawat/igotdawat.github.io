@@ -178,6 +178,7 @@
       let currentName = "";
 
       onAuthStateChanged(auth, async (user) => {
+        console.log("Auth state changed:", { uid: user?.uid, email: user?.email });
         if (!user) { window.location.href = "/"; return; }
         if (ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
           await show404(); return;
