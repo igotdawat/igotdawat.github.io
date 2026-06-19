@@ -89,11 +89,10 @@
       // If already signed in, route based on role.
       onAuthStateChanged(auth, (user) => {
         if (!user) return;
-        if (ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
-          window.location.href = "applications";
-        } else {
-          window.location.href = "menu";
-        }
+        const target = ADMIN_EMAILS.includes((user.email || "").toLowerCase()) ? "applications" : "menu";
+        // Check if we're on Firebase Hosting (has rewrite rules) or local dev (needs explicit path)
+        const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        window.location.href = isLocalDev ? `/pages/${target}.html` : target;
       });
 
       form.addEventListener("submit", async (e) => {
