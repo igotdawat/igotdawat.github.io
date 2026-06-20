@@ -3,7 +3,7 @@ import admin, { db } from './firebase-init.js';
 async function debitWallet(req, res, userId, userEmail, decodedToken) {
   const { amount, orderId, note } = req.body;
 
-  if (!amount || amount <= 0) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Invalid amount' });
   }
   if (!orderId) {
@@ -77,7 +77,7 @@ async function debitWallet(req, res, userId, userEmail, decodedToken) {
 async function refundWallet(req, res, userId, userEmail, decodedToken) {
   const { amount, orderId, note } = req.body;
 
-  if (!amount || amount <= 0) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Invalid amount' });
   }
   if (!orderId) {
