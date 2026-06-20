@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   if (!action) {
     return res.status(400).json({ error: 'Missing action' });
   }
-  if (!amount || amount <= 0) {
+  if (typeof amount !== 'number' || amount <= 0 || !Number.isFinite(amount)) {
     return res.status(400).json({ error: 'Invalid amount' });
   }
   if (!orderId) {

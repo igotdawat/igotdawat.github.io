@@ -29,6 +29,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing orderId, items, or total' });
   }
 
+  if (typeof total !== 'number' || total <= 0 || !Number.isFinite(total)) {
+    return res.status(400).json({ error: 'Invalid total' });
+  }
+
   try {
     // Query for wallet history BEFORE transaction (reads must be outside)
     const historySnap = await db.collection('walletHistory')

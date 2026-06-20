@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   if (!forDate || typeof forDate !== 'string') {
     return res.status(400).json({ error: 'Invalid forDate' });
   }
-  if (typeof clientTotal !== 'number' || clientTotal <= 0) {
+  if (typeof clientTotal !== 'number' || clientTotal <= 0 || !Number.isFinite(clientTotal)) {
     return res.status(400).json({ error: 'Invalid total' });
   }
 
