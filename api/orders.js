@@ -302,7 +302,15 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
 
     if (orderData) {
       notifyAdminsInternal({
-        message: formatOrderNotification({ type: 'order-edited', order: orderData, userEmail, items, newTotal: total, prevTotal: orderData.total }),
+        message: formatOrderNotification({
+          type: 'order-edited',
+          order: orderData,
+          userEmail,
+          items,
+          newTotal: total,
+          prevTotal: orderData.total,
+          oldItems: orderData.items
+        }),
         link: 'orders-admin',
         linkText: 'View orders',
         type: 'order-edited'
