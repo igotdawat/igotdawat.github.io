@@ -172,6 +172,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { action } = req.body;
+
+  // notify-new-app doesn't require authentication (used by unauthenticated applicants)
+  if (action === 'notify-new-app') {
+    return notifyNewApplication(req, res, null);
+  }
+
+  // All other actions require authentication
   const token = req.headers.authorization?.split('Bearer ')[1];
   if (!token) {
     return res.status(401).json({ error: 'Missing authorization token' });
@@ -184,8 +192,6 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const { action } = req.body;
-
   switch (action) {
     case 'delete-all':
       return deleteAllUserData(req, res, decodedToken);
@@ -193,8 +199,6 @@ export default async function handler(req, res) {
       return wipeUserData(req, res, decodedToken);
     case 'notify':
       return sendNotification(req, res, decodedToken, true);
-    case 'notify-new-app':
-      return notifyNewApplication(req, res, decodedToken);
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
