@@ -95,7 +95,9 @@ Built with a **gaming aesthetic** (retro pixel art UI), the platform combines no
 | **Price Fraud** | Strict atomic transactions; wallet debit confirmed before order marked paid |
 | **Wallet Tampering** | Direct client writes blocked; only Admin SDK can modify |
 | **Direct API Exploits** | Firestore rules enforce: `allow create, update, delete: if false` for sensitive collections |
-| **Notification Spoofing** | Admins only via Admin SDK; users can only create alerts to admins |
+| **Notification Spoofing** | Only backend/Admin SDK can create notifications; users cannot fabricate alerts |
+| **User Self-Approval** | Users can only create applications for their own email with "pending" status |
+| **Fake Admin Notifications** | Admin notifications strictly controlled; users cannot create them via client |
 | **Session Hijacking** | Firebase Auth handles token validation; HTTPS enforced |
 
 ---
@@ -148,7 +150,10 @@ dawat/
 │   ├── refundWallet.js            # Wallet refund
 │   ├── confirmTopup.js            # Admin: Confirm top-up
 │   ├── rejectTopup.js             # Admin: Reject top-up
-│   └── wipeUserData.js            # Admin: Wipe all user data
+│   ├── wipeUserData.js            # Admin: Wipe all user data
+│   ├── purgeAllUserData.js        # Admin: Bulk purge all users
+│   ├── sendAdminNotification.js   # Backend: Send admin notifications
+│   └── notifyTopupRequest.js      # Backend: Notify on topup requests
 │
 ├── 📂 js/                         # Client-side Modules
 │   ├── firebase.js                # Firebase initialization
@@ -158,6 +163,7 @@ dawat/
 │   ├── wallet.js                  # Wallet operations
 │   ├── wallet-secure.js           # Secure wallet API calls
 │   ├── notifications.js           # Notification system
+│   ├── notify-admins-api.js       # Backend notification helper
 │   ├── modal.js                   # Dialog/modal components
 │   ├── app-utils.js               # Utility functions
 │   └── stars.js                   # UI animations
@@ -332,8 +338,13 @@ orders: allow create, update, delete: if false
 wallets: allow create, delete: if false; update: if isAdmin
   ↳ Only admins can update balances
 
-notifications: allow create: if isAdmin or audience=="admin"
-  ↳ Users can alert admins; admins can notify users
+notifications: allow create: if isAdmin
+  ↳ Only admins/backend via Admin SDK can create notifications
+  ↳ Prevents users from fabricating fake alerts to trick admins
+
+applications: allow create: if status=="pending" && email is not empty
+  ↳ Only safe fields allowed: name, mobile, email, office, address
+  ↳ Users cannot create applications for other emails or approve themselves
 ```
 
 ---
