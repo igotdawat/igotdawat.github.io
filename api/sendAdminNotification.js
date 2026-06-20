@@ -17,6 +17,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
+  const adminEmails = ['ihavedawat@gmail.com', 'igotdawat@gmail.com'];
+  if (!adminEmails.includes(decodedToken.email)) {
+    return res.status(403).json({ error: 'Only admins can send notifications' });
+  }
+
   const { message, link = "", linkText = "", type = "info" } = req.body;
 
   if (!message) {
