@@ -123,8 +123,9 @@ async function placeOrder(req, res, userId, userEmail, decodedToken) {
       };
     });
 
+    const itemLines = validatedItems.map(item => `• ${item.name} ×${item.qty} — ৳${item.price * item.qty}`).join('\n');
     notifyAdminsInternal({
-      message: `Order placed by ${userEmail.split('@')[0]}\nTotal: ${serverTotal}৳`,
+      message: `New order — ${new Date().toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' }).replace(/\//g, ' · ')}\nBy: ${userEmail}\n${itemLines}\nTotal: ৳${serverTotal}`,
       link: 'orders-admin',
       linkText: 'View orders',
       type: 'order-placed'
@@ -145,6 +146,7 @@ async function cancelOrder(req, res, userId, userEmail, decodedToken) {
   }
 
   try {
+    let orderData = null;
     const result = await db.runTransaction(async (transaction) => {
       const orderRef = db.collection('orders').doc(orderId);
       const orderSnap = await transaction.get(orderRef);
@@ -154,6 +156,7 @@ async function cancelOrder(req, res, userId, userEmail, decodedToken) {
       }
 
       const order = orderSnap.data();
+      orderData = order;
 
       if (order.userId !== userId && order.userEmail !== userEmail) {
         throw new Error('Order does not belong to this user');
@@ -203,12 +206,16 @@ async function cancelOrder(req, res, userId, userEmail, decodedToken) {
       };
     });
 
-    notifyAdminsInternal({
-      message: `Order cancelled by ${userEmail.split('@')[0]}\nOrder: ${orderId}`,
-      link: 'orders-admin',
-      linkText: 'View orders',
-      type: 'order-cancelled'
-    }).catch(() => {});
+    if (orderData) {
+      const itemLines = orderData.items ? orderData.items.map(item => `• ${item.name} ×${item.qty} — ৳${item.price * item.qty}`).join('\n') : '';
+      const refund = orderData.total || 0;
+      notifyAdminsInternal({
+        message: `Order cancelled — ${new Date().toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' }).replace(/\//g, ' · ')}\nBy: ${userEmail}\n${itemLines}\nRefund: ৳${refund}`,
+        link: 'orders-admin',
+        linkText: 'View orders',
+        type: 'order-cancelled'
+      }).catch(() => {});
+    }
 
     return res.status(200).json(result);
   } catch (error) {
@@ -229,6 +236,7 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
   }
 
   try {
+    let orderData = null;
     const historySnap = await db.collection('walletHistory')
       .where('userId', '==', userId)
       .where('ref', '==', orderId)
@@ -244,6 +252,7 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
       }
 
       const order = orderSnap.data();
+      orderData = order;
       if (order.userId !== userId && order.userEmail !== userEmail) {
         throw new Error('Order does not belong to this user');
       }
@@ -292,12 +301,22 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
       };
     });
 
-    notifyAdminsInternal({
-      message: `Order edited by ${userEmail.split('@')[0]}\nNew total: ${total}৳`,
-      link: 'orders-admin',
-      linkText: 'View orders',
-      type: 'order-edited'
-    }).catch(() => {});
+    if (orderData) {
+      const itemLines = orderData.items && items ? items.map((item, i) => {
+        const oldItem = orderData.items[i];
+        const change = oldItem && oldItem.qty !== item.qty ? `${oldItem.qty}→${item.qty}` : `${item.qty}`;
+        return `~ ${item.name || oldItem?.name} ×${change} — ৳${item.price * item.qty}`;
+      }).join('\n') : '';
+      const prevTotal = orderData.total || 0;
+      const diff = total - prevTotal;
+      const diffLabel = diff > 0 ? `+৳${diff}` : `৳${diff}`;
+      notifyAdminsInternal({
+        message: `Order edited — ${new Date().toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' }).replace(/\//g, ' · ')}\nBy: ${userEmail}\n${itemLines}\nTotal: ৳${total} (${diffLabel})`,
+        link: 'orders-admin',
+        linkText: 'View orders',
+        type: 'order-edited'
+      }).catch(() => {});
+    }
 
     return res.status(200).json(result);
   } catch (error) {
