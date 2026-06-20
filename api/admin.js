@@ -126,6 +126,28 @@ async function sendNotification(req, res, decodedToken, requireAdmin = false) {
   }
 }
 
+async function notifyNewApplication(req, res, decodedToken) {
+  const { name, email, mobile } = req.body;
+
+  if (!name || !email || !mobile) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    await notifyAdminsInternal({
+      message: `New application\nBy: ${name} (${email})\nMobile: ${mobile}`,
+      link: 'applications#pending',
+      linkText: 'Review',
+      type: 'application-new'
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    const { sendErrorResponse } = await import('./error-handler.js');
+    return sendErrorResponse(res, error, 'Failed to notify admins');
+  }
+}
+
 export async function notifyAdminsInternal({ message, link = "", linkText = "", type = "info" }) {
   if (!message) return;
   try {
@@ -171,6 +193,8 @@ export default async function handler(req, res) {
       return wipeUserData(req, res, decodedToken);
     case 'notify':
       return sendNotification(req, res, decodedToken, true);
+    case 'notify-new-app':
+      return notifyNewApplication(req, res, decodedToken);
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
