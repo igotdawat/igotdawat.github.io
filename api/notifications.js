@@ -49,8 +49,8 @@ export default async function handler(req, res) {
       });
 
       return res.status(200).json({ success: true });
-    } else if (action === 'notify-new-application') {
-      const { message } = req.body;
+    } else if (action === 'notify-system' || action === 'notify-new-application') {
+      const { message, link = "", linkText = "", type = "info" } = req.body;
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ error: 'Invalid message' });
       }
@@ -60,9 +60,9 @@ export default async function handler(req, res) {
         userEmail: '',
         audience: 'admin',
         message: String(message).substring(0, 500),
-        link: 'applications#pending',
-        linkText: 'Review',
-        type: 'application-new',
+        link: link || (action === 'notify-new-application' ? 'applications#pending' : ''),
+        linkText: linkText || (action === 'notify-new-application' ? 'Review' : ''),
+        type: type || (action === 'notify-new-application' ? 'application-new' : 'info'),
         read: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
