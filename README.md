@@ -130,33 +130,51 @@ Built with a **gaming aesthetic** (retro pixel art UI), the platform combines no
 
 ```
 dawat/
-├── 📄 HTML Pages
+├── 📄 HTML Pages (User)
 │   ├── index.html                 # Login page
-│   ├── menu.html                  # User: Order meals
-│   ├── orders.html                # User: View & manage orders
-│   ├── wallet.html                # User: Wallet & top-ups
-│   ├── settings.html              # User: Account settings
-│   ├── menu-admin.html            # Admin: Manage meals
-│   ├── orders-admin.html          # Admin: View all orders
-│   ├── topups-admin.html          # Admin: Process top-ups
-│   └── applications.html          # Admin: User applications
+│   ├── menu.html                  # Browse & order meals
+│   ├── orders.html                # View & manage orders
+│   ├── wallet.html                # Wallet & top-ups
+│   ├── settings.html              # Account settings
+│   ├── apply.html                 # Submit application/profile
+│   ├── 404.html                   # Error page
+│   │
+│   ├── 📄 Admin Pages
+│   ├── menu-admin.html            # Manage daily meals
+│   ├── orders-admin.html          # View all orders
+│   ├── topups-admin.html          # Process top-up requests
+│   ├── applications.html          # Review user applications
+│   ├── settings-admin.html        # Admin settings
+│   └── users.html                 # User management
 │
 ├── 📂 api/                        # Vercel Serverless Functions
-│   ├── firebase-init.js           # Shared Firebase config
-│   ├── placeOrder.js              # Create order + debit wallet
-│   ├── editOrder.js               # Modify order + adjust wallet
-│   ├── cancelOrder.js             # Cancel order + refund wallet
-│   ├── debitWallet.js             # Direct wallet debit
-│   ├── refundWallet.js            # Wallet refund
-│   ├── confirmTopup.js            # Admin: Confirm top-up
-│   ├── rejectTopup.js             # Admin: Reject top-up
-│   ├── wipeUserData.js            # Admin: Wipe all user data
-│   ├── deleteAllUserData.js       # Admin: Bulk delete all users
-│   ├── sendAdminNotification.js   # Backend: Send admin notifications
-│   └── notifyTopupRequest.js      # Backend: Notify on topup requests
+│   ├── Order Management
+│   ├── ├── placeOrder.js          # Create order + debit wallet
+│   ├── ├── editOrder.js           # Modify order + adjust wallet
+│   ├── └── cancelOrder.js         # Cancel order + refund wallet
+│   ├── 
+│   ├── Wallet Operations
+│   ├── ├── debitWallet.js         # Debit wallet (admin only)
+│   ├── ├── refundWallet.js        # Refund wallet (admin only)
+│   ├── ├── confirmTopup.js        # Confirm wallet top-up
+│   ├── └── rejectTopup.js         # Reject wallet top-up
+│   ├── 
+│   ├── Data Management
+│   ├── ├── wipeUserData.js        # Delete all data for one user
+│   ├── └── deleteAllUserData.js   # Bulk delete all users/specific users
+│   ├── 
+│   ├── Notifications
+│   ├── ├── sendAdminNotification.js   # Backend: Send admin alerts
+│   ├── └── notifyNewApplication.js    # Backend: Notify on new applications
+│   ├── 
+│   └── Shared Utilities
+│       ├── firebase-init.js           # Firebase Admin SDK setup
+│       ├── error-handler.js           # Centralized error handling
+│       ├── delete-user-data-helper.js # Shared delete logic
+│       └── constants.js               # Shared constants & limits
 │
 ├── 📂 js/                         # Client-side Modules
-│   ├── firebase.js                # Firebase initialization
+│   ├── firebase.js                # Firebase SDK initialization
 │   ├── admin-config.js            # Admin email list
 │   ├── admin-helpers.js           # Admin utility functions
 │   ├── admin-view.js              # Admin dashboard logic
@@ -172,20 +190,20 @@ dawat/
 │   └── style.css                  # Unified styling (retro theme)
 │
 ├── 📂 config/
-│   ├── firestore.rules            # Security rules
-│   └── firestore.indexes.json     # Database indexes
-│
-├── 📂 assets/
-│   └── sounds/
-│       └── notification.mp3       # Notification sound
+│   ├── firestore.rules            # Firestore security rules
+│   └── firestore.indexes.json     # Firestore indexes
 │
 ├── ⚙️ Configuration Files
 │   ├── vercel.json                # Vercel deployment config
 │   ├── firebase.json              # Firebase config
 │   ├── package.json               # Dependencies
-│   └── .gitignore                 # Git ignore rules
+│   ├── .gitignore                 # Git ignore rules
+│   └── .env.example               # Environment variables template
+│
 └── 🔧 Dev Configuration
-    └── .vercelignore              # Vercel ignore rules
+    ├── .vercelignore              # Vercel ignore rules
+    ├── .claude/settings.json      # Claude Code settings
+    └── .env.local                 # Local environment variables (never commit)
 ```
 
 ---
@@ -194,33 +212,36 @@ dawat/
 
 ### Getting Started
 
-1. **Sign Up / Login**
-   - Visit the platform
+1. **Sign Up / Login** (`index.html`)
    - Create account or sign in
-   - Verify email
+   - Verify email via Firebase Auth
 
-2. **Browse Menu**
-   - Go to "Menu"
+2. **Submit Profile** (`apply.html`)
+   - Provide name, mobile, office, address
+   - Application pending admin approval
+
+3. **Browse Menu** (`menu.html`)
    - View today's available meals
+   - Check prices & availability
    - Select quantities
 
-3. **Place Order**
-   - Confirm total
-   - Server validates prices
+4. **Place Order**
+   - Review order total
+   - Server validates prices against menu
    - Wallet debited automatically
-   - Receive confirmation
+   - Order confirmed with status "placed"
 
-4. **Manage Orders**
-   - View all orders in "My Orders"
-   - Edit upcoming orders (quantity/items)
-   - Cancel orders (automatic refund)
+5. **Manage Orders** (`orders.html`)
+   - View all past and pending orders
+   - Edit quantities/items (before 12 PM)
+   - Cancel orders (automatic wallet refund)
 
-5. **Wallet Management**
-   - Check balance in header
-   - Top-up via bank transfer
-   - Provide bank reference
-   - Wait for admin confirmation
-   - Balance updated automatically
+6. **Wallet Management** (`wallet.html`)
+   - Check current balance in header
+   - Request top-up with bank reference
+   - Wait for admin approval
+   - Balance updates instantly on confirmation
+   - View complete transaction history
 
 ---
 
@@ -240,11 +261,14 @@ npm install
 cp .env.example .env.local
 # Edit .env.local with your Firebase credentials
 
-# 4. Deploy locally (Firebase Emulator)
-firebase emulators:start
+# 4. Local development with dotenv
+# Node.js will automatically load .env.local via dotenv package
 
 # 5. Deploy to Vercel (if authorized)
 vercel deploy
+
+# 6. Set environment variables on Vercel
+# Configure GOOGLE_APPLICATION_CREDENTIALS and FIREBASE_PROJECT_ID in Vercel dashboard
 ```
 
 ### API Endpoints
@@ -252,105 +276,187 @@ vercel deploy
 #### Order Management
 ```
 POST /api/placeOrder
-  - Create order with validation
-  - Input: { items, forDate, clientTotal }
+  - Create order with validation & wallet debit
+  - Authentication: Required (Firebase)
+  - Input: { items: [{mealId, qty}], forDate, clientTotal }
   - Returns: { orderId, newBalance, total }
+  - Security: Server validates prices against menu; prevents fraud
 
 POST /api/editOrder
-  - Modify existing order
-  - Input: { orderId, items, total }
-  - Returns: { success, newTotal }
+  - Modify existing order (quantity/items)
+  - Authentication: Required
+  - Input: { orderId, items: [{mealId, qty}], total }
+  - Returns: { success, newBalance }
+  - Security: Validates ownership; recalculates prices server-side
 
 POST /api/cancelOrder
-  - Cancel order and refund
+  - Cancel order and refund wallet
+  - Authentication: Required
   - Input: { orderId }
   - Returns: { success, message }
+  - Security: Only order owner can cancel
 ```
 
 #### Wallet Management
 ```
 POST /api/debitWallet
-  - Debit wallet (order payment)
-  - Admin SDK only
+  - Debit wallet (internal use only)
+  - Authentication: Admin SDK only (bypasses Firestore rules)
+  - Input: { userId, amount }
+  - Returns: { success, newBalance }
 
 POST /api/refundWallet
-  - Refund wallet (order cancellation)
-  - Admin SDK only
+  - Refund wallet (internal use only)
+  - Authentication: Admin SDK only
+  - Input: { userId, amount }
+  - Returns: { success, newBalance }
 
 POST /api/confirmTopup
-  - Admin confirms top-up
+  - Admin confirms wallet top-up request
+  - Authentication: Admin only
   - Input: { topupId }
-  - Updates wallet + creates history
+  - Returns: { success, message, newBalance }
 
 POST /api/rejectTopup
-  - Admin rejects top-up
+  - Admin rejects wallet top-up request
+  - Authentication: Admin only
   - Input: { topupId }
+  - Returns: { success, message }
+```
 
-#### Admin Operations
+#### Data Management
 ```
 POST /api/wipeUserData
-  - Admin: Delete all user data for specific email
+  - Admin: Delete all data for specific email
+  - Authentication: Admin SDK only
   - Input: { email }
-  - Deletes: orders, wallet, topups, history, notifications
+  - Deletes: orders, wallet, topups, history, notifications, applications
   - Returns: { success, message, totalDeleted }
 
 POST /api/deleteAllUserData
   - Admin: Bulk delete all users or specific users
-  - Input: { deleteAll: boolean }
+  - Authentication: Admin SDK only
+  - Input: { deleteAll: boolean, emails?: [string] }
   - Deletes: all user data across all collections
   - Returns: { success, message, totalDeleted }
+```
+
+#### Notifications
+```
+POST /api/sendAdminNotification
+  - Backend: Send notification to admin
+  - Authentication: Admin SDK only
+  - Input: { adminEmail, message, type }
+  - Returns: { success, notificationId }
+
+POST /api/notifyNewApplication
+  - Backend: Notify admins of new application
+  - Authentication: Admin SDK only
+  - Input: { applicantName, applicantEmail }
+  - Returns: { success, message }
 ```
 
 ### Database Schema
 
 #### Collections
+
+**wallets/{userId}**
 ```
-wallets/{userId}
-  - balance: number
-  - email: string
-  - updatedAt: timestamp
+{
+  balance: number,              # Current wallet balance in currency
+  email: string,                # User email
+  updatedAt: timestamp          # Last update timestamp
+}
+```
 
-orders/{orderId}
-  - userId: string
-  - userEmail: string
-  - forDate: string (YYYY-MM-DD)
-  - items: [{mealId, name, price, qty}]
-  - total: number
-  - status: "placed" | "cancelled"
-  - paid: boolean
-  - createdAt: timestamp
+**orders/{orderId}**
+```
+{
+  userId: string,               # User ID
+  userEmail: string,            # User email
+  forDate: string,              # YYYY-MM-DD format
+  items: [{
+    mealId: string,
+    name: string,
+    price: number,
+    qty: number
+  }],
+  total: number,                # Total order amount
+  status: "placed" | "cancelled",
+  paid: boolean,                # Payment status (debited from wallet)
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
+```
 
-topups/{topupId}
-  - userId: string
-  - amount: number
-  - bankRef: string
-  - status: "pending" | "confirmed" | "rejected"
-  - requestedAt: timestamp
+**topups/{topupId}**
+```
+{
+  userId: string,
+  userEmail: string,
+  amount: number,               # Top-up amount
+  bankRef: string,              # Bank reference for verification
+  status: "pending" | "confirmed" | "rejected",
+  requestedAt: timestamp,
+  processedAt: timestamp
+}
+```
 
-notifications/{notificationId}
-  - userId: string
-  - message: string
-  - type: string
-  - read: boolean
-  - createdAt: timestamp
+**notifications/{notificationId}**
+```
+{
+  userId: string,
+  message: string,
+  type: string,                 # "order", "topup", "admin", etc.
+  read: boolean,
+  createdAt: timestamp
+}
+```
+
+**applications/{applicationId}** (User profiles/applications)
+```
+{
+  userId: string,
+  email: string,                # Cannot be changed after creation
+  name: string,
+  mobile: string,
+  office: string,
+  address: string,
+  status: "pending" | "approved" | "rejected",
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
 ```
 
 ### Security Rules Summary
 
 ```firestore
-orders: allow create, update, delete: if false
-  ↳ Only Admin SDK can create/modify
+orders:
+  ↳ allow create, update, delete: if false
+  ↳ Only Admin SDK can create/modify orders
 
-wallets: allow create, delete: if false; update: if isAdmin
-  ↳ Only admins can update balances
+wallets:
+  ↳ allow create, delete: if false
+  ↳ allow update: if isAdmin
+  ↳ Prevents clients from directly modifying balances
 
-notifications: allow create: if isAdmin
-  ↳ Only admins/backend via Admin SDK can create notifications
-  ↳ Prevents users from fabricating fake alerts to trick admins
+notifications:
+  ↳ allow create: if isAdmin
+  ↳ Only backend via Admin SDK can create notifications
+  ↳ Prevents users from fabricating alerts
 
-applications: allow create: if status=="pending" && email is not empty
-  ↳ Only safe fields allowed: name, mobile, email, office, address
-  ↳ Users cannot create applications for other emails or approve themselves
+applications:
+  ↳ allow create: if status == "pending" && email exists
+  ↳ allow read: if userId matches || isAdmin
+  ↳ allow update: if isAdmin
+  ↳ Only safe fields: name, mobile, email, office, address
+  ↳ Users cannot approve themselves or create applications for others
+
+topups:
+  ↳ allow create: if userId matches && status == "pending"
+  ↳ allow read: if userId matches || isAdmin
+  ↳ allow update: if isAdmin
+  ↳ Users can only request; admins approve/reject
 ```
 
 ---
@@ -358,42 +464,63 @@ applications: allow create: if status=="pending" && email is not empty
 ## 🧪 Testing Checklist
 
 ### User Features
-- [ ] Browse daily menu
+- [ ] Sign up / login with email verification
+- [ ] Submit profile application for admin approval
+- [ ] Browse daily menu and view prices
 - [ ] Place order with wallet debit
-- [ ] Edit order (quantity/items)
-- [ ] Cancel order (automatic refund)
-- [ ] Request wallet top-up
+- [ ] Edit order quantities (before deadline)
+- [ ] Cancel order with automatic refund
+- [ ] Request wallet top-up with bank reference
 - [ ] View transaction history
-- [ ] Receive notifications
+- [ ] Receive notifications for orders/topups
+- [ ] Check wallet balance in real-time
 
 ### Admin Features
-- [ ] Manage daily meals
-- [ ] View all orders
-- [ ] Confirm/reject top-ups
-- [ ] View user profiles
+- [ ] Manage daily meal menu (add/edit/remove)
+- [ ] View all user orders with filters
+- [ ] Confirm/reject wallet top-up requests
+- [ ] Review user applications
+- [ ] Manage user profiles & access
 - [ ] Monitor wallet transactions
+- [ ] Delete user data (single or bulk)
+- [ ] Receive admin notifications
 
 ### Security Validation
-- [ ] Cannot create order via direct API
-- [ ] Cannot modify wallet directly
-- [ ] Cannot change order price
-- [ ] Cannot create fake notifications
-- [ ] Cannot bypass authentication
+- [ ] Cannot create order via direct API (Firestore rules block)
+- [ ] Cannot modify wallet directly (client writes blocked)
+- [ ] Cannot change order price (server re-validates)
+- [ ] Cannot create fake notifications (backend-only)
+- [ ] Cannot bypass authentication (Firebase Auth required)
+- [ ] Cannot approve own application (admin-only update)
+- [ ] Cannot create application for other email (validated)
+- [ ] Cannot access other users' orders/wallet (ownership checks)
+- [ ] Cannot manipulate topup status (admin-only)
+- [ ] Session tokens secure (HTTPS + Firebase handling)
 
 ---
 
 ## 🔐 Environment Variables
 
+**Local Development** (`.env.local`)
 ```env
-# Firebase (keep these secret - never commit to repo)
-GOOGLE_APPLICATION_CREDENTIALS=<path-to-service-account.json>
-FIREBASE_PROJECT_ID=<your-firebase-project-id>
-
-# Optional
-DEBUG=false
+# Firebase Admin SDK (keep these secret - never commit)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+FIREBASE_PROJECT_ID=your-firebase-project-id
 ```
 
-⚠️ **IMPORTANT**: Never commit `.env`, `.env.local`, or service account keys to version control. Use `.gitignore` and set environment variables via your hosting platform (Vercel, Firebase).
+**Vercel Production** (set in Vercel Dashboard)
+```
+GOOGLE_APPLICATION_CREDENTIALS = <content of service-account.json>
+FIREBASE_PROJECT_ID = your-firebase-project-id
+```
+
+⚠️ **CRITICAL**: 
+- Never commit `.env.local` or service account keys to git
+- Use `.gitignore` to exclude these files
+- Load `.env.local` automatically in local dev via dotenv
+- Set production env vars via Vercel dashboard, not in code
+- Rotate service account keys regularly
+- Restrict service account to Firebase Admin permissions only
 
 ---
 
@@ -405,6 +532,30 @@ DEBUG=false
 | Menu Load | < 500ms | ✅ Real-time |
 | Notification Delivery | < 1s | ✅ Real-time |
 | Wallet Update | Instant | ✅ Real-time |
+
+---
+
+## 🔧 Recent Improvements
+
+### Error Handling (commit b9fd771)
+- Centralized error handling via `api/error-handler.js`
+- Consistent error responses across all endpoints
+- Better logging and debugging
+
+### Database Optimization (commit 777f48a)
+- Optimized Firestore queries for better performance
+- Added compound indexes for complex filters
+- Reduced document reads in high-traffic endpoints
+
+### Constants & Configuration (commit 1855eac)
+- Extracted batch limits and validation rules to `api/constants.js`
+- Improved quantity validation (batch sizes, maximum orders)
+- Cleaner configuration management
+
+### Local Development (commit b1e45b9)
+- Automatic `.env.local` loading via dotenv
+- Improved local development experience
+- No manual environment variable setup needed
 
 ---
 
