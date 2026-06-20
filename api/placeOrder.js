@@ -68,10 +68,11 @@ export default async function handler(req, res) {
       }
 
       // Validate quantity is a positive integer
-      const qty = Math.floor(Number(item.qty) || 0);
-      if (qty <= 0 || qty > 100) {
-        return res.status(400).json({ error: `Invalid quantity for meal ${item.mealId}: must be 1-100` });
+      const qtyNum = Number(item.qty);
+      if (!Number.isInteger(qtyNum) || qtyNum <= 0 || qtyNum > 100) {
+        return res.status(400).json({ error: `Invalid quantity for meal ${item.mealId}: must be integer 1-100` });
       }
+      const qty = qtyNum;
 
       validatedItems.push({
         mealId: item.mealId,

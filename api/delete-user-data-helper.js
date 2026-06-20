@@ -1,7 +1,6 @@
 // Shared utility for deleting user data across collections
 import admin, { db } from './firebase-init.js';
-
-const FIRESTORE_BATCH_LIMIT = 450;
+import { FIRESTORE_BATCH_LIMIT } from './constants.js';
 
 export async function deleteUserDataByEmail(userEmail) {
   const e = String(userEmail || '').toLowerCase();
