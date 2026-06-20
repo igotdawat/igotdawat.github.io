@@ -1,6 +1,6 @@
 import { auth } from "./firebase.js";
 
-// Send admin notification via backend API (bypasses client-side permission restrictions)
+// Send admin notification via backend API (requires admin role for verification)
 export async function notifyAdminsViaAPI({ message, link = "", linkText = "", type = "info" }) {
   if (!message) return;
   try {
@@ -14,7 +14,7 @@ export async function notifyAdminsViaAPI({ message, link = "", linkText = "", ty
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ action: 'notify-system', message, link, linkText, type })
+      body: JSON.stringify({ action: 'notify', message, link, linkText, type })
     });
 
     if (!response.ok) {

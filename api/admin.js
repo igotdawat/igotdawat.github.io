@@ -100,43 +100,48 @@ async function sendNotification(req, res, decodedToken, requireAdmin = false) {
     }
   }
 
-  const { message, link = "", linkText = "", type = "info", action } = req.body;
+  const { message, link = "", linkText = "", type = "info" } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Missing message' });
   }
 
   try {
-    if (action === 'admin-new-app') {
-      await db.collection('notifications').add({
-        userId: '',
-        userEmail: '',
-        audience: 'admin',
-        message: String(message).substring(0, 500),
-        link: 'applications#pending',
-        linkText: 'Review',
-        type: 'application-new',
-        read: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    } else {
-      await db.collection('notifications').add({
-        userId: "",
-        userEmail: "",
-        audience: "admin",
-        message,
-        link,
-        linkText,
-        type,
-        read: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
+    await db.collection('notifications').add({
+      userId: "",
+      userEmail: "",
+      audience: "admin",
+      message,
+      link,
+      linkText,
+      type,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     return res.status(200).json({ success: true });
   } catch (error) {
     const { sendErrorResponse } = await import('./error-handler.js');
     return sendErrorResponse(res, error, 'Failed to send notification');
+  }
+}
+
+export async function notifyAdminsInternal({ message, link = "", linkText = "", type = "info" }) {
+  if (!message) return;
+  try {
+    await db.collection('notifications').add({
+      userId: '',
+      userEmail: '',
+      audience: 'admin',
+      message: String(message).substring(0, 500),
+      link,
+      linkText,
+      type,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Failed to notify admins:', error);
   }
 }
 
@@ -166,9 +171,6 @@ export default async function handler(req, res) {
       return wipeUserData(req, res, decodedToken);
     case 'notify':
       return sendNotification(req, res, decodedToken, true);
-    case 'admin-new-app':
-    case 'notify-system':
-      return sendNotification(req, res, decodedToken, false);
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
