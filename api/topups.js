@@ -21,7 +21,7 @@ async function createTopupRequest(req, res, decodedToken) {
       amount: Number(amount),
       bankRef: String(bankRef).substring(0, 100),
       status: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      requestedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     const userName = decodedToken.name || '';
