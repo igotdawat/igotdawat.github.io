@@ -209,6 +209,10 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
     return res.status(400).json({ error: 'Missing orderId, items, or total' });
   }
 
+  if (typeof total !== 'number' || !Number.isFinite(total) || total <= 0) {
+    return res.status(400).json({ error: 'Invalid total: must be a positive number' });
+  }
+
   try {
     const historySnap = await db.collection('walletHistory')
       .where('userId', '==', userId)
