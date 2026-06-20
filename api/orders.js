@@ -1,4 +1,5 @@
 import admin, { db } from './firebase-init.js';
+import { notifyAdminsInternal } from './admin.js';
 
 async function placeOrder(req, res, userId, userEmail, decodedToken) {
   const { items, forDate, clientTotal } = req.body;
@@ -122,6 +123,13 @@ async function placeOrder(req, res, userId, userEmail, decodedToken) {
       };
     });
 
+    notifyAdminsInternal({
+      message: `Order placed by ${userEmail.split('@')[0]}\nTotal: ${serverTotal}৳`,
+      link: 'orders-admin',
+      linkText: 'View orders',
+      type: 'order-placed'
+    }).catch(() => {});
+
     return res.status(200).json(result);
   } catch (error) {
     const { sendErrorResponse } = await import('./error-handler.js');
@@ -194,6 +202,13 @@ async function cancelOrder(req, res, userId, userEmail, decodedToken) {
         message: 'Order cancelled successfully'
       };
     });
+
+    notifyAdminsInternal({
+      message: `Order cancelled by ${userEmail.split('@')[0]}\nOrder: ${orderId}`,
+      link: 'orders-admin',
+      linkText: 'View orders',
+      type: 'order-cancelled'
+    }).catch(() => {});
 
     return res.status(200).json(result);
   } catch (error) {
@@ -276,6 +291,13 @@ async function editOrder(req, res, userId, userEmail, decodedToken) {
         newTotal: total
       };
     });
+
+    notifyAdminsInternal({
+      message: `Order edited by ${userEmail.split('@')[0]}\nNew total: ${total}৳`,
+      link: 'orders-admin',
+      linkText: 'View orders',
+      type: 'order-edited'
+    }).catch(() => {});
 
     return res.status(200).json(result);
   } catch (error) {

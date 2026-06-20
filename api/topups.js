@@ -1,5 +1,6 @@
 import admin, { db } from './firebase-init.js';
 import { ADMIN_EMAILS } from '../js/admin-config.js';
+import { notifyAdminsInternal } from './admin.js';
 
 async function confirmTopup(req, res, decodedToken) {
   const adminEmail = decodedToken.email;
@@ -69,6 +70,13 @@ async function confirmTopup(req, res, decodedToken) {
         balance: newBalance
       };
     });
+
+    notifyAdminsInternal({
+      message: `Topup confirmed\nUser: ${result.userEmail}\nAmount: ${result.amount}৳`,
+      link: 'topups-admin',
+      linkText: 'View topups',
+      type: 'topup-confirmed'
+    }).catch(() => {});
 
     return res.status(200).json(result);
   } catch (error) {
