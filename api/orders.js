@@ -235,6 +235,51 @@ async function editOrder(req, res, userId, userEmail) {
   }
 
   try {
+    const mealsSnap = await db.collection('meals').get();
+    const mealsById = {};
+    mealsSnap.docs.forEach(doc => {
+      mealsById[doc.id] = doc.data();
+    });
+
+    let serverTotal = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      if (!item.mealId || !item.qty || item.qty <= 0) {
+        return res.status(400).json({ error: 'Invalid item: mealId and qty required' });
+      }
+
+      const meal = mealsById[item.mealId];
+      if (!meal) {
+        return res.status(400).json({ error: `Meal ${item.mealId} not found in menu` });
+      }
+
+      const serverPrice = Number(meal.price || 0);
+      if (serverPrice <= 0 || !Number.isFinite(serverPrice)) {
+        return res.status(400).json({ error: `Meal ${item.mealId} has invalid price` });
+      }
+
+      const qtyNum = Number(item.qty);
+      if (!Number.isInteger(qtyNum) || qtyNum <= 0 || qtyNum > 100) {
+        return res.status(400).json({ error: `Invalid quantity for meal ${item.mealId}: must be integer 1-100` });
+      }
+
+      validatedItems.push({
+        mealId: item.mealId,
+        name: meal.name || '',
+        price: serverPrice,
+        qty: qtyNum
+      });
+      serverTotal += serverPrice * qtyNum;
+    }
+
+    if (serverTotal !== total) {
+      return res.status(400).json({
+        error: 'PRICE_MISMATCH',
+        message: `Order total mismatch: server calculated ${serverTotal}৳, client sent ${total}৳`
+      });
+    }
+
     let orderData = null;
     const historySnap = await db.collection('walletHistory')
       .where('userId', '==', userId)
@@ -274,8 +319,8 @@ async function editOrder(req, res, userId, userEmail) {
       const newBalance = currentBalance - diff;
 
       transaction.update(orderRef, {
-        items,
-        total,
+        items: validatedItems,
+        total: serverTotal,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
