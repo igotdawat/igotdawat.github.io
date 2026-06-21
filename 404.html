@@ -39,6 +39,15 @@
           <a href="/" class="ghost-btn" style="display:inline-block; text-decoration:none;">▶ Go home</a>
     </div>
 
+    <script>
+      // Redirect all paths from GitHub Pages to Vercel
+      if (window.location.hostname === 'igotdawat.github.io') {
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const hash = window.location.hash;
+        window.location.href = `https://igotdawat.vercel.app${path}${search}${hash}`;
+      }
+    </script>
     <script src="../js/stars.js"></script>
   </body>
 </html>
