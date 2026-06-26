@@ -486,23 +486,23 @@ function gmailHref(app, kind) {
   if (kind === "rejected") {
     subject = "Update on your Dawat application";
     bodyText =
-      "Hi " + (app.name || "") + ",\n\n" +
+      "Hello " + (app.name || "") + ",\n\n" +
       "Thank you for your interest in Dawat.\n\n" +
-      "After reviewing your application, we are unable to onboard your office at this time. " +
-      "We hope to expand our service area soon and will keep your details on file.\n\n" +
+      "After reviewing your application, we are unable to provide our service to your office at this time.\n\n" +
+      "We hope to expand our service area in the future and appreciate your interest in Dawat.\n\n" +
       "If you believe this was a mistake or your details have changed, please reply to this email.\n\n" +
-      "— Dawat";
+      "Best regards,\n" +
+      "Dawat";
   } else {
     subject = "Your Dawat account is ready";
-    const loginUrl = window.location.origin + "/";
     bodyText =
-      "Hi " + (app.name || "") + ",\n\n" +
-      "Your Dawat application has been approved!\n\n" +
-      "Sign in here: " + loginUrl + "\n" +
-      "Email:    " + (app.email || "") + "\n" +
-      "Password: " + (app.issuedPassword || "") + "\n\n" +
-      "Please change your password after first sign-in.\n\n" +
-      "— Dawat";
+      "Hello " + (app.name || "") + ",\n\n" +
+      "Your Dawat account credentials have been sent to your registered phone number: " + (app.mobile || "") + ".\n\n" +
+      "For security purposes, you are required to change your password upon your first login.\n\n" +
+      "Need help?\n" +
+      "Feel free to reply to this email for any assistance.\n\n" +
+      "Best regards,\n" +
+      "Dawat";
   }
   return "https://mail.google.com/mail/?view=cm&fs=1" +
     "&to=" + encodeURIComponent(app.email || "") +
