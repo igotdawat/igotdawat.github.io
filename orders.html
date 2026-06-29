@@ -379,6 +379,8 @@
         }
         const delBtn = e.target.closest('[data-action="delete"]');
         if (delBtn) {
+          delBtn.disabled = true;
+          delBtn.innerHTML = 'Cancelling<span class="loading-dots"><span></span><span></span><span></span></span>';
           const ok = await confirmDialog({
             title: "Cancel order",
             message: "Cancel this order?",
@@ -386,9 +388,11 @@
             cancelLabel: "Keep order",
             danger: true
           });
-          if (!ok) return;
-          delBtn.disabled = true;
-          delBtn.innerHTML = 'Cancelling<span class="loading-dots"><span></span><span></span><span></span></span>';
+          if (!ok) {
+            delBtn.disabled = false;
+            delBtn.innerHTML = 'Cancel order';
+            return;
+          }
           const editBtn = delBtn.closest(".app-card").querySelector('[data-action="edit"]');
           editBtn.disabled = true;
           const cancelledOrder = ordersById[delBtn.dataset.orderId];
