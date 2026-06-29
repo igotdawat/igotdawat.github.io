@@ -5,7 +5,7 @@ import { notifyAdminsInternal } from './admin.js';
 async function createTopupRequest(req, res, decodedToken) {
   const userId = decodedToken.uid;
   const userEmail = decodedToken.email;
-  const { amount, bankRef } = req.body;
+  const { amount, bankRef, note } = req.body;
 
   if (typeof amount !== 'number' || !Number.isFinite(amount) || !Number.isInteger(amount) || amount < 100 || amount > 10000) {
     return res.status(400).json({ error: 'Invalid amount' });
@@ -47,6 +47,7 @@ async function createTopupRequest(req, res, decodedToken) {
       userEmail: userEmail.toLowerCase(),
       amount: Number(amount),
       bankRef: String(bankRef).substring(0, 100),
+      note: String(note || '').trim(),
       status: 'pending',
       requestedAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -137,7 +138,7 @@ async function confirmTopup(req, res, decodedToken) {
         amount,
         balanceAfter: newBalance,
         ref: topupId,
-        note: 'BRAC ref ' + (topup.bankRef || ''),
+        note: (topup.note || '') + (topup.note ? ' · ' : '') + 'BRAC ref ' + (topup.bankRef || ''),
         byAdmin: adminEmail.toLowerCase(),
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
