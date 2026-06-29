@@ -312,6 +312,7 @@
             return;
           }
           placeBtn.disabled = true;
+          placeBtn.innerHTML = '▶ Placing<span class="loading-dots"><span></span><span></span><span></span></span>';
           try {
             // Call secure server-side order placement
             // Server validates menu items, calculates total, debits wallet in transaction
@@ -363,6 +364,7 @@
           } catch (err) {
             console.error(err);
             placeBtn.disabled = false;
+            placeBtn.innerHTML = '▶ Place order';
             msgEl.textContent = err.message === "INSUFFICIENT_FUNDS"
               ? "Not enough balance."
               : "Could not place order.";

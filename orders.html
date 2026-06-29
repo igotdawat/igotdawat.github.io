@@ -262,6 +262,9 @@
             }
           }
           saveBtn.disabled = true;
+          saveBtn.innerHTML = '▶ Saving<span class="loading-dots"><span></span><span></span><span></span></span>';
+          const cancelEditBtn = card.querySelector('[data-action="cancel-edit"]');
+          cancelEditBtn.disabled = true;
           try {
             const prevKey = (o.items || [])
               .slice()
@@ -367,6 +370,8 @@
           } catch (err) {
             console.error(err);
             saveBtn.disabled = false;
+            saveBtn.innerHTML = '▶ Save';
+            cancelEditBtn.disabled = false;
             msg.textContent = "Could not save changes.";
             msg.classList.add("is-err"); msg.hidden = false;
           }
@@ -383,6 +388,9 @@
           });
           if (!ok) return;
           delBtn.disabled = true;
+          delBtn.innerHTML = 'Cancelling<span class="loading-dots"><span></span><span></span><span></span></span>';
+          const editBtn = delBtn.closest(".app-card").querySelector('[data-action="edit"]');
+          editBtn.disabled = true;
           const cancelledOrder = ordersById[delBtn.dataset.orderId];
           const email = cancelledOrder ? (cancelledOrder.userEmail || "").toLowerCase() : "";
           try {
@@ -425,6 +433,8 @@
           } catch (err) {
             console.error(err);
             delBtn.disabled = false;
+            editBtn.disabled = false;
+            delBtn.innerHTML = 'Cancel order';
             alertDialog({ title: "Error", message: "Could not cancel." });
           }
         }
