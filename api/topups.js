@@ -204,6 +204,7 @@ async function rejectTopup(req, res, decodedToken) {
   }
 
   try {
+    let topupData = null;
     const result = await db.runTransaction(async (transaction) => {
       const topupRef = db.collection('topups').doc(topupId);
       const topupSnap = await transaction.get(topupRef);
@@ -213,6 +214,7 @@ async function rejectTopup(req, res, decodedToken) {
       }
 
       const topup = topupSnap.data();
+      topupData = topup;
 
       if (topup.status !== 'pending') {
         return { alreadyHandled: true, status: topup.status };
@@ -231,11 +233,10 @@ async function rejectTopup(req, res, decodedToken) {
     });
 
     try {
-      const topup = topupSnap.data();
       await sendEmailUser(
-        topup.userEmail,
+        topupData.userEmail,
         'Top-up declined',
-        `Your top-up request of ৳${topup.amount} has been declined.\n\nPlease contact support if you have questions.\n\nBest regards,\nDawat`
+        `Your top-up request of ৳${topupData.amount} has been declined.\n\nPlease contact support if you have questions.\n\nBest regards,\nDawat`
       );
     } catch (emailErr) {
       console.error('Email send failed:', emailErr);
