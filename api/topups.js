@@ -167,6 +167,7 @@ async function confirmTopup(req, res, decodedToken) {
         amount,
         balanceAfter: newBalance,
         ref: topupId,
+        note: "BRAC ref " + (topup.bankRef || ""),
         byAdmin: adminEmail.toLowerCase(),
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
