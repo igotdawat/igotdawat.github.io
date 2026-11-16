@@ -70,13 +70,14 @@ const FILTERS = GROUPS[group];
 const STORED_FILTER_KEY = "dawat:adminFilter:" + group;
 
 // ----- Element refs -----
-const appsView    = document.getElementById("apps-view");
-const whoEmail    = document.getElementById("admin-who-email");
-const signoutBtn  = document.getElementById("signout-btn");
-const listEl      = document.getElementById("apps-list");
-const subtitle    = document.getElementById("admin-subtitle");
-const pills       = document.querySelectorAll(".pill[data-filter]");
-const clearAllBtn = document.getElementById("clear-all-btn");
+const appsView        = document.getElementById("apps-view");
+const whoEmail        = document.getElementById("admin-who-email");
+const signoutBtn      = document.getElementById("signout-btn");
+const listEl          = document.getElementById("apps-list");
+const subtitle        = document.getElementById("admin-subtitle");
+const pills           = document.querySelectorAll(".pill[data-filter]");
+const clearAllBtn     = document.getElementById("clear-all-btn");
+const userSearchInput = document.getElementById("user-search");
 
 // ----- State -----
 const hashRaw  = (location.hash || "").replace(/^#/, "");
@@ -90,10 +91,17 @@ let unsubscribeList = null;
 let currentItems    = [];
 const APPS_PER_PAGE = 10;
 let appsPage        = 0;
+let listRenderVersion = 0;
 const filterCounts  = {}; // Track counts for each filter
 const walletBalancesById = {}; // Cache user wallet balances by UID
 const walletBalancesByEmail = {}; // Fallback cache when UID is missing
 let unsubscribers   = []; // Track all subscriptions for cleanup
+let walletPageUnsubscribers = [];
+
+function clearWalletPageSubscriptions() {
+  walletPageUnsubscribers.forEach((unsub) => unsub());
+  walletPageUnsubscribers = [];
+}
 
 async function getWalletBalanceByEmail(email) {
   const key = String(email || "").trim().toLowerCase();
@@ -107,9 +115,11 @@ async function getWalletBalanceByEmail(email) {
   return balance;
 }
 
-async function loadWalletBalancesForPage(items) {
-  const ids = [...new Set(items.map((a) => a.userId).filter(Boolean))];
-  const emails = [...new Set(items.map((a) => String(a.email || "").trim().toLowerCase()).filter(Boolean))];
+async function loadWalletBalancesForPage(items, isCurrentRender) {
+  clearWalletPageSubscriptions();
+  const ids = [...new Set(items.map((a) => a.userId).filter((id) => id && !(id in walletBalancesById)))];
+  const emails = [...new Set(items.map((a) => String(a.email || "").trim().toLowerCase())
+    .filter((email) => email && !(email in walletBalancesByEmail)))];
   await Promise.all([
     ...ids.map(async (userId) => {
       walletBalancesById[userId] = await getBalance(userId);
@@ -120,6 +130,7 @@ async function loadWalletBalancesForPage(items) {
       }
     })
   ]);
+  if (!isCurrentRender()) return;
   
   // Set up subscriptions for live updates
   items.forEach((app) => {
@@ -130,7 +141,7 @@ async function loadWalletBalancesForPage(items) {
         const span = document.querySelector(`.card-balance[data-user-id="${app.userId}"]`);
         if (span) span.textContent = `(${formatTk(balance)})`;
       });
-      unsubscribers.push(unsub);
+      walletPageUnsubscribers.push(unsub);
     }
     // Subscribe by email if no userId
     else {
@@ -145,7 +156,7 @@ async function loadWalletBalancesForPage(items) {
             if (span) span.textContent = `(${formatTk(balance)})`;
           }
         );
-        unsubscribers.push(unsub);
+        walletPageUnsubscribers.push(unsub);
       }
     }
   });
@@ -185,6 +196,11 @@ syncPills();
 signoutBtn.addEventListener("click", async () => {
   await signOut(auth);
   window.location.href = "/";
+});
+
+userSearchInput?.addEventListener("input", () => {
+  appsPage = 0;
+  renderList(currentItems);
 });
 
 // ----- Auth state drives access -----
@@ -239,12 +255,14 @@ window.addEventListener("hashchange", () => {
 //   - Active   (in Users): credsIssued && mustChangePassword === false
 // Both subscribe to status==approved and filter on the client.
 function subscribeToApplications(filter) {
+  listRenderVersion++;
   if (unsubscribeList) unsubscribeList();
   listEl.innerHTML = '<p class="apps-empty">Loading<span class="loading-dots"><span></span><span></span><span></span></span></p>';
   
   // Subscribe to all filters for count tracking
   unsubscribers.forEach(unsub => unsub());
   unsubscribers = [];
+  clearWalletPageSubscriptions();
   
   FILTERS.forEach(f => {
     const statusForQuery = (f === "customer") ? "approved" : f;
@@ -310,25 +328,41 @@ function subscribeToApplications(filter) {
 }
 
 async function renderList(items) {
-  if (!items.length) {
-    listEl.innerHTML =
-      '<p class="apps-empty">No ' + currentFilter + ' applications.</p>';
+  const renderVersion = ++listRenderVersion;
+  const searchTerm = group === "users" ? (userSearchInput?.value || "").trim().toLowerCase() : "";
+  const visibleItems = searchTerm
+    ? items.filter((app) => [
+        app.name,
+        app.email,
+        app.mobile,
+        app.office,
+        app.address
+      ].some((value) => String(value || "").toLowerCase().includes(searchTerm)))
+    : items;
+
+  if (!visibleItems.length) {
+    clearWalletPageSubscriptions();
+    const emptyMessage = group === "users"
+      ? searchTerm ? "No users found." : `No ${currentFilter === "customer" ? "active" : currentFilter} users.`
+      : `No ${currentFilter} applications.`;
+    listEl.innerHTML = `<p class="apps-empty">${emptyMessage}</p>`;
     return;
   }
-  const totalPages = Math.max(1, Math.ceil(items.length / APPS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / APPS_PER_PAGE));
   if (appsPage >= totalPages) appsPage = totalPages - 1;
   if (appsPage < 0) appsPage = 0;
   const start = appsPage * APPS_PER_PAGE;
-  const pageItems = items.slice(start, start + APPS_PER_PAGE);
+  const pageItems = visibleItems.slice(start, start + APPS_PER_PAGE);
   if ((currentFilter === "customer" || currentFilter === "banned") && pageItems.length > 0) {
     try {
-      await loadWalletBalancesForPage(pageItems);
+      await loadWalletBalancesForPage(pageItems, () => renderVersion === listRenderVersion);
     } catch (err) {
       logError('wallet:load', err);
     }
   }
+  if (renderVersion !== listRenderVersion) return;
   const cardsHTML = pageItems.map(cardHTML).join("");
-  const pager = items.length > APPS_PER_PAGE
+  const pager = visibleItems.length > APPS_PER_PAGE
     ? `<div class="wallet-pager">
         <button type="button" class="ghost-btn" data-pager="prev"${appsPage === 0 ? " disabled" : ""}>◀ Prev</button>
         <span>Page ${appsPage + 1} / ${totalPages}</span>

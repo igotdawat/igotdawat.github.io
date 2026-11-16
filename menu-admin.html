@@ -43,7 +43,7 @@
       </nav>
 
       <p class="help-text" hidden>
-        Tick the meals available on each weekday. This repeats every week. Customers can order until <strong>10 PM the night before</strong>.
+        Add the meals available on each weekday. This repeats every week. Customers can order until <strong>10 PM the night before</strong>.
       </p>
 
       <div id="menu-days" class="menu-days"></div>
@@ -84,17 +84,47 @@
       });
 
       let meals = [];
-      let weekly = {};   // { sat: [mealIds], sun: [...], ... }
+      let weekly = {};
+      const TRASH_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
-      async function loadAll() {
-        // Pull meal catalog.
-        const mealsSnap = await getDocs(query(collection(db, "meals"), orderBy("name")));
-        meals = mealsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      function renderDaySection(section) {
+        const key = section.dataset.dayKey;
+        const selectedIds = Array.isArray(weekly[key]) ? weekly[key] : [];
+        const menu = section.querySelector(".admin-order-select-menu");
+        const trigger = section.querySelector("[data-menu-trigger]");
+        const selectedMeal = meals.find((meal) => meal.id === section.dataset.selectedMealId);
 
-        // Pull the single weekly menu doc.
-        const wkSnap = await getDoc(doc(db, "weeklyMenu", "main"));
-        weekly = wkSnap.exists() ? (wkSnap.data() || {}) : {};
+        trigger.querySelector("[data-select-value]").textContent = selectedMeal
+          ? `${selectedMeal.name} · ${formatTk(selectedMeal.price)}`
+          : "Select a meal";
+        menu.innerHTML = meals.map((meal) => `
+          <button type="button" class="admin-order-select-option" role="option"
+            aria-selected="${meal.id === section.dataset.selectedMealId}"
+            data-menu-meal-id="${escape(meal.id)}" ${selectedIds.includes(meal.id) ? "disabled" : ""}>
+            <span class="admin-menu-option-name">${escape(meal.name)}</span>
+            <span class="admin-menu-option-price">${formatTk(meal.price)}</span>
+          </button>
+        `).join("");
 
+        const selectedMeals = selectedIds
+          .map((id) => meals.find((meal) => meal.id === id))
+          .filter(Boolean);
+        const selectedList = section.querySelector("[data-menu-meals]");
+        selectedList.innerHTML = selectedMeals.length
+          ? selectedMeals.map((meal) => `
+              <div class="admin-menu-meal">
+                <span class="admin-menu-meal-name">${escape(meal.name)}</span>
+                <span class="admin-menu-meal-price">${formatTk(meal.price)}</span>
+                <button type="button" class="icon-btn icon-btn-danger admin-menu-remove"
+                  data-remove-meal="${escape(meal.id)}" aria-label="Remove ${escape(meal.name)}" title="Remove meal">
+                  ${TRASH_ICON}
+                </button>
+              </div>
+            `).join("")
+          : '<p class="admin-menu-empty">No meals added for this day.</p>';
+      }
+
+      function renderMenuDays() {
         if (!meals.length) {
           helpText.hidden = true;
           saveBar.hidden = true;
@@ -104,27 +134,139 @@
 
         helpText.hidden = false;
         saveBar.hidden = false;
-
-        daysEl.innerHTML = WEEKDAY_ORDER.map((key) => {
-          const picked = new Set(weekly[key] || []);
-          const mealsHtml = meals.map((m) => `
-            <label class="menu-pick pixel-check">
-              <input type="checkbox" data-meal-id="${m.id}" ${picked.has(m.id) ? "checked" : ""} />
-              <span class="menu-pick-name">${escape(m.name)}</span>
-              <span class="menu-pick-price">${formatTk(m.price)}</span>
-            </label>
-          `).join("");
-          return `
-            <section class="menu-day" data-day-key="${key}">
-              <header class="menu-day-head">
-                <h3>${WEEKDAY_LABELS[key]}</h3>
-              </header>
-              <div class="menu-picks">${mealsHtml}</div>
-            </section>
-          `;
-        }).join("");
-        saveBar.hidden = false;
+        daysEl.innerHTML = WEEKDAY_ORDER.map((key) => `
+          <section class="menu-day" data-day-key="${key}">
+            <header class="menu-day-head">
+              <h3>${WEEKDAY_LABELS[key]}</h3>
+            </header>
+            <div class="admin-menu-controls">
+              <div class="admin-order-dropdown admin-menu-dropdown">
+                <button type="button" class="admin-order-select-trigger" data-menu-trigger
+                  aria-haspopup="listbox" aria-expanded="false" aria-controls="menu-${key}-options">
+                  <span class="admin-order-select-value" data-select-value>Select a meal</span>
+                  <span class="admin-order-select-caret" aria-hidden="true">▾</span>
+                </button>
+                <div id="menu-${key}-options" class="admin-order-select-menu" role="listbox"
+                  aria-label="${WEEKDAY_LABELS[key]} meals" hidden></div>
+              </div>
+              <button type="button" class="ghost-btn admin-menu-add" data-add-meal>Add meal</button>
+            </div>
+            <p class="menu-day-msg" data-day-message role="status" hidden></p>
+            <div class="admin-menu-meals" data-menu-meals></div>
+          </section>
+        `).join("");
+        daysEl.querySelectorAll(".menu-day").forEach(renderDaySection);
       }
+
+      async function loadAll() {
+        const mealsSnap = await getDocs(query(collection(db, "meals"), orderBy("name")));
+        meals = mealsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        const wkSnap = await getDoc(doc(db, "weeklyMenu", "main"));
+        weekly = wkSnap.exists() ? (wkSnap.data() || {}) : {};
+        const validMealIds = new Set(meals.map((meal) => meal.id));
+        WEEKDAY_ORDER.forEach((key) => {
+          weekly[key] = Array.isArray(weekly[key])
+            ? weekly[key].filter((id) => validMealIds.has(id))
+            : [];
+        });
+        renderMenuDays();
+      }
+
+      function closeMenuDropdowns() {
+        daysEl.querySelectorAll("[data-menu-trigger]").forEach((trigger) => {
+          trigger.setAttribute("aria-expanded", "false");
+          trigger.nextElementSibling.hidden = true;
+        });
+      }
+
+      daysEl.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-menu-trigger]");
+        if (trigger) {
+          const menu = trigger.nextElementSibling;
+          const isOpen = trigger.getAttribute("aria-expanded") === "true";
+          closeMenuDropdowns();
+          if (!isOpen) {
+            menu.hidden = false;
+            trigger.setAttribute("aria-expanded", "true");
+          }
+          return;
+        }
+
+        const option = event.target.closest("[data-menu-meal-id]");
+        if (option) {
+          const section = option.closest(".menu-day");
+          const triggerButton = section.querySelector("[data-menu-trigger]");
+          section.dataset.selectedMealId = option.dataset.menuMealId;
+          renderDaySection(section);
+          closeMenuDropdowns();
+          triggerButton.focus();
+          return;
+        }
+
+        const addButton = event.target.closest("[data-add-meal]");
+        if (addButton) {
+          const section = addButton.closest(".menu-day");
+          const key = section.dataset.dayKey;
+          const mealId = section.dataset.selectedMealId;
+          const message = section.querySelector("[data-day-message]");
+          if (!meals.some((meal) => meal.id === mealId)) {
+            message.textContent = "Select a meal first.";
+            message.hidden = false;
+            return;
+          }
+
+          weekly[key] = [...(Array.isArray(weekly[key]) ? weekly[key] : []), mealId];
+          section.dataset.selectedMealId = "";
+          message.hidden = true;
+          renderDaySection(section);
+          return;
+        }
+
+        const removeButton = event.target.closest("[data-remove-meal]");
+        if (removeButton) {
+          const section = removeButton.closest(".menu-day");
+          const key = section.dataset.dayKey;
+          weekly[key] = (Array.isArray(weekly[key]) ? weekly[key] : [])
+            .filter((id) => id !== removeButton.dataset.removeMeal);
+          renderDaySection(section);
+        }
+      });
+
+      daysEl.addEventListener("keydown", (event) => {
+        const trigger = event.target.closest("[data-menu-trigger]");
+        const menu = event.target.closest(".admin-order-select-menu");
+        if (event.key === "Escape" && (trigger || menu)) {
+          closeMenuDropdowns();
+          if (menu) menu.previousElementSibling.focus();
+          return;
+        }
+
+        if (trigger && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+          event.preventDefault();
+          const section = trigger.closest(".menu-day");
+          const options = section.querySelectorAll('[role="option"]:not(:disabled)');
+          if (!options.length) return;
+          closeMenuDropdowns();
+          trigger.nextElementSibling.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+          options[0].focus();
+          return;
+        }
+
+        if (menu && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+          event.preventDefault();
+          const options = [...menu.querySelectorAll('[role="option"]:not(:disabled)')];
+          if (!options.length) return;
+          const index = options.indexOf(document.activeElement);
+          const step = event.key === "ArrowDown" ? 1 : -1;
+          options[(index + step + options.length) % options.length].focus();
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".admin-menu-dropdown")) closeMenuDropdowns();
+      });
 
       saveBtn.addEventListener("click", async () => {
         msgEl.hidden = true; msgEl.classList.remove("is-ok", "is-err");
@@ -135,8 +277,7 @@
           WEEKDAY_ORDER.forEach((key) => {
             const sec = daysEl.querySelector(`.menu-day[data-day-key="${key}"]`);
             if (!sec) { payload[key] = []; return; }
-            payload[key] = Array.from(sec.querySelectorAll('input[type="checkbox"]:checked'))
-              .map((i) => i.dataset.mealId);
+            payload[key] = Array.isArray(weekly[key]) ? [...new Set(weekly[key])] : [];
           });
           await setDoc(doc(db, "weeklyMenu", "main"), {
             ...payload,

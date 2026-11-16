@@ -747,6 +747,10 @@ button[disabled]:active {
   gap: 8px;
   margin-bottom: 18px;
 }
+.user-search {
+  width: 100%;
+  margin: 0 0 16px;
+}
 .pills-spacer { flex: 1; }
 
 /* Danger button — Clear all. Red, scarier than the ghost button. */
@@ -1822,6 +1826,67 @@ button[disabled]:active {
   flex-direction: column;
   gap: 8px;
 }
+.admin-menu-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.admin-menu-dropdown { min-width: 0; }
+.admin-menu-dropdown .admin-order-select-menu {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 4px 4px 0 #000;
+}
+.admin-menu-dropdown .admin-order-select-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+}
+.admin-menu-option-name { min-width: 0; overflow-wrap: anywhere; }
+.admin-menu-option-price {
+  color: var(--gold);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.admin-menu-dropdown .admin-order-select-option:disabled:hover {
+  color: var(--ink-dim);
+  background: transparent;
+}
+.admin-menu-controls .admin-menu-add {
+  min-height: 33px;
+  margin: 0;
+  white-space: nowrap;
+}
+.admin-menu-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-menu-meal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+}
+.admin-menu-meal-name { min-width: 0; overflow-wrap: anywhere; }
+.admin-menu-meal-price {
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.admin-menu-empty {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
 .menu-pick {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -2143,7 +2208,7 @@ button[disabled]:active {
    Single-row layout so name, price, and delete all share one baseline. */
 .meal-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 14px;
   background: var(--panel);
@@ -2164,6 +2229,20 @@ button[disabled]:active {
 }
 .meal-row .meal-desc {
   margin: 4px 0 0;
+}
+.meal-form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.meal-form-actions > button { margin: 0; }
+.meal-form-actions .ghost-btn {
+  padding: 12px 16px;
+  font-size: 18px;
+  letter-spacing: 3px;
+  line-height: normal;
 }
 
 /* ===== Notifications bell ===== */
@@ -2534,6 +2613,7 @@ button[disabled]:active {
   input, select { font-size: 16px; padding: 8px 10px; }
   label { font-size: 13px; letter-spacing: 1px; }
   button { font-size: 16px; letter-spacing: 2px; padding: 11px 14px; }
+  .meal-form-actions .ghost-btn { font-size: 16px; letter-spacing: 2px; padding: 11px 14px; }
 
   /* --- Toolbars / nav ---
      Keep "Signed in as / email" on the left and the action buttons
