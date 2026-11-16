@@ -75,7 +75,7 @@ async function placeOrder(req, res, userId, userEmail) {
       const walletSnap = await transaction.get(walletRef);
       const currentBalance = walletSnap.exists ? Number(walletSnap.data().balance || 0) : 0;
 
-      if (currentBalance < serverTotal) {
+      if (currentBalance - serverTotal < -200) {
         throw new Error('INSUFFICIENT_FUNDS');
       }
 

@@ -306,7 +306,7 @@
             msgEl.classList.add("is-err"); msgEl.hidden = false;
             return;
           }
-          if (walletBalance < total) {
+          if (walletBalance - total < -200) {
             msgEl.textContent = "Not enough balance. Top-up " + formatTk(total - walletBalance) + " more.";
             msgEl.classList.add("is-err"); msgEl.hidden = false;
             return;
