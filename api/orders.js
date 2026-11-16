@@ -1,6 +1,7 @@
 import admin, { db } from './firebase-init.js';
 import { notifyAdminsInternal } from './admin.js';
 import { formatOrderNotification } from './format-notification.js';
+import { ADMIN_EMAILS } from '../js/admin-config.js';
 
 async function placeOrder(req, res, userId, userEmail) {
   const { items, forDate, clientTotal } = req.body;
@@ -136,6 +137,153 @@ async function placeOrder(req, res, userId, userEmail) {
   } catch (error) {
     const { sendErrorResponse } = await import('./error-handler.js');
     return sendErrorResponse(res, error, 'Failed to place order');
+  }
+}
+
+async function adminPlaceOrder(req, res, adminUid, adminEmail) {
+  const { userEmail: targetEmailInput, forDate, items, clientTotal } = req.body;
+  const targetEmail = String(targetEmailInput || '').trim().toLowerCase();
+
+  if (!targetEmail || !forDate || !Array.isArray(items) || !items.length) {
+    return res.status(400).json({ error: 'Missing userEmail, forDate, or items' });
+  }
+  if (typeof clientTotal !== 'number' || !Number.isFinite(clientTotal) || clientTotal <= 0 || !Number.isInteger(clientTotal)) {
+    return res.status(400).json({ error: 'Invalid total: must be a positive integer' });
+  }
+
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(forDate);
+  if (!dateMatch) {
+    return res.status(400).json({ error: 'Invalid delivery date' });
+  }
+  const [, yearText, monthText, dayText] = dateMatch;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return res.status(400).json({ error: 'Invalid delivery date' });
+  }
+
+  try {
+    let targetUser;
+    try {
+      targetUser = await admin.auth().getUserByEmail(targetEmail);
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        return res.status(404).json({ error: 'Customer account not found' });
+      }
+      throw error;
+    }
+
+    if (targetUser.disabled || !targetUser.email) {
+      return res.status(400).json({ error: 'Customer account is disabled or has no email' });
+    }
+
+    const appSnap = await db.collection('applications')
+      .where('email', '==', targetEmail)
+      .get();
+    if (appSnap.empty) {
+      return res.status(404).json({ error: 'Customer application not found' });
+    }
+    const hasEligibleApplication = appSnap.docs.some((doc) => {
+      const status = doc.data().status;
+      return !['banned', 'rejected', 'pending'].includes(status);
+    });
+    if (!hasEligibleApplication) {
+      return res.status(403).json({ error: 'Cannot place an order for this customer' });
+    }
+
+    const mealsSnap = await db.collection('meals').get();
+    const mealsById = {};
+    mealsSnap.docs.forEach(doc => {
+      mealsById[doc.id] = doc.data();
+    });
+
+    let serverTotal = 0;
+    const validatedItems = [];
+    const seenMealIds = new Set();
+    for (const item of items) {
+      if (!item || typeof item.mealId !== 'string' || seenMealIds.has(item.mealId)) {
+        return res.status(400).json({ error: 'Invalid or duplicate meal in order' });
+      }
+      const qty = Number(item.qty);
+      if (!Number.isInteger(qty) || qty <= 0 || qty > 100) {
+        return res.status(400).json({ error: `Invalid quantity for meal ${item.mealId}: must be integer 1-100` });
+      }
+
+      const meal = mealsById[item.mealId];
+      if (!meal) {
+        return res.status(400).json({ error: `Meal ${item.mealId} not found in menu` });
+      }
+      const price = Number(meal.price || 0);
+      if (price <= 0 || !Number.isFinite(price)) {
+        return res.status(400).json({ error: `Meal ${item.mealId} has invalid price` });
+      }
+
+      seenMealIds.add(item.mealId);
+      validatedItems.push({ mealId: item.mealId, name: meal.name || '', price, qty });
+      serverTotal += price * qty;
+    }
+
+    if (!Number.isFinite(serverTotal) || !Number.isInteger(serverTotal) || serverTotal <= 0) {
+      return res.status(400).json({ error: 'Invalid order total' });
+    }
+    if (serverTotal !== clientTotal) {
+      return res.status(400).json({
+        error: 'PRICE_MISMATCH',
+        message: `Order total mismatch: server calculated ${serverTotal}৳, client sent ${clientTotal}৳`
+      });
+    }
+
+    const result = await db.runTransaction(async (transaction) => {
+      const walletRef = db.collection('wallets').doc(targetUser.uid);
+      const walletSnap = await transaction.get(walletRef);
+      const currentBalance = walletSnap.exists ? Number(walletSnap.data().balance || 0) : 0;
+      const newBalance = currentBalance - serverTotal;
+      const orderRef = db.collection('orders').doc();
+      const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+      transaction.set(orderRef, {
+        userId: targetUser.uid,
+        userEmail: targetEmail,
+        forDate,
+        items: validatedItems,
+        total: serverTotal,
+        status: 'placed',
+        paid: true,
+        paidAt: timestamp,
+        createdAt: timestamp,
+        createdByAdminUid: adminUid,
+        createdByAdminEmail: adminEmail.toLowerCase()
+      });
+      transaction.set(walletRef, {
+        balance: newBalance,
+        email: targetEmail,
+        updatedAt: timestamp
+      }, { merge: true });
+
+      const historyRef = db.collection('walletHistory').doc();
+      transaction.set(historyRef, {
+        userId: targetUser.uid,
+        userEmail: targetEmail,
+        type: 'order_debit',
+        amount: -serverTotal,
+        balanceAfter: newBalance,
+        ref: orderRef.id,
+        note: `Admin order for ${forDate}`,
+        createdByAdminUid: adminUid,
+        createdByAdminEmail: adminEmail.toLowerCase(),
+        createdAt: timestamp
+      });
+
+      return { success: true, orderId: orderRef.id, total: serverTotal, newBalance };
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Admin order placement failed:', error);
+    const { sendErrorResponse } = await import('./error-handler.js');
+    return sendErrorResponse(res, error, 'Failed to place order for customer');
   }
 }
 
@@ -393,6 +541,11 @@ export default async function handler(req, res) {
   const { action } = req.body;
 
   switch (action) {
+    case 'admin-place':
+      if (!ADMIN_EMAILS.map(email => email.toLowerCase()).includes((userEmail || '').toLowerCase())) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      return adminPlaceOrder(req, res, userId, userEmail);
     case 'place':
       return placeOrder(req, res, userId, userEmail);
     case 'cancel':
