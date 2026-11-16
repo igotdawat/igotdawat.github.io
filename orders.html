@@ -255,8 +255,8 @@
           const prevTotal = Number(o.total || 0);
           const diff = total - prevTotal;
           if (diff > 0) {
-            if (walletBalance < diff) {
-              msg.textContent = "Not enough balance. Top-up " + formatTk(diff - walletBalance) + " more.";
+            if (walletBalance - diff < -200) {
+              msg.textContent = "Not enough balance. Top-up " + formatTk(diff - walletBalance - 200) + " more.";
               msg.classList.add("is-err"); msg.hidden = false;
               return;
             }

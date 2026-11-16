@@ -310,7 +310,7 @@ async function editOrder(req, res, userId, userEmail) {
 
       // diff > 0: user is adding to order (needs balance)
       // diff < 0: user is reducing order (refund)
-      if (diff > 0 && currentBalance < diff) {
+      if (diff > 0 && currentBalance - diff < -200) {
         throw new Error('INSUFFICIENT_FUNDS');
       }
 
