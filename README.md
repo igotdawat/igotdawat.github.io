@@ -1,4 +1,4 @@
-# 🎉 DAWAT - আপনার নিমন্ত্রণ
+# DAWAT - আপনার নিমন্ত্রণ
 
 Secure meal ordering and wallet management platform.
 
