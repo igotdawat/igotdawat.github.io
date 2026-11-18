@@ -42,6 +42,32 @@
         <a href="settings-admin">Settings</a>
       </nav>
 
+      <button type="button" class="ghost-btn cash-payment-toggle" id="cash-payment-toggle"
+        aria-expanded="false" aria-controls="cash-payment-form">＋ Record cash payment</button>
+      <form id="cash-payment-form" class="app-card cash-payment-form" hidden>
+        <h2 class="app-card-name">Record cash payment</h2>
+        <label for="cash-payment-customer-trigger">Customer</label>
+        <div class="admin-order-dropdown">
+          <select id="cash-payment-customer" class="admin-order-select-source" hidden>
+            <option value="">Select a customer</option>
+          </select>
+          <button type="button" class="admin-order-select-trigger" id="cash-payment-customer-trigger"
+            aria-haspopup="listbox" aria-expanded="false" aria-required="true"
+            aria-controls="cash-payment-customer-options">
+            <span class="admin-order-select-value" data-select-value>Select a customer</span>
+            <span class="admin-order-select-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="cash-payment-customer-options" class="admin-order-select-menu" role="listbox"
+            aria-label="Approved customers" hidden></div>
+        </div>
+        <label for="cash-payment-amount">Amount (Tk)</label>
+        <input id="cash-payment-amount" type="number" min="100" max="10000" step="1" required />
+        <label for="cash-payment-note">Note (optional)</label>
+        <input id="cash-payment-note" type="text" maxlength="160" placeholder="Cash received at office" />
+        <button type="submit" id="cash-payment-submit">▶ Add cash payment</button>
+        <p id="cash-payment-message" class="form-msg" role="status" hidden></p>
+      </form>
+
       <div class="filter-pills" role="tablist">
         <button type="button" class="pill is-active" data-filter="pending"   role="tab" aria-selected="true">Pending</button>
         <button type="button" class="pill"           data-filter="confirmed" role="tab" aria-selected="false">Confirmed</button>
@@ -74,6 +100,17 @@
       const signoutBtn = document.getElementById("signout-btn");
       const listEl   = document.getElementById("topups-list");
       const pills    = document.querySelectorAll(".filter-pills .pill");
+      const cashPaymentToggle = document.getElementById("cash-payment-toggle");
+      const cashPaymentForm = document.getElementById("cash-payment-form");
+      const cashCustomerSelect = document.getElementById("cash-payment-customer");
+      const cashCustomerDropdown = createCashCustomerDropdown();
+      const cashPaymentSubmit = document.getElementById("cash-payment-submit");
+      const cashPaymentMessage = document.getElementById("cash-payment-message");
+      const cashPaymentRequestStorageKey = "dawat-cash-payment-request-id";
+      const savedCashPaymentRequestId = sessionStorage.getItem(cashPaymentRequestStorageKey) || "";
+      let cashPaymentRequestId = /^[A-Za-z0-9_-]{20}$/.test(savedCashPaymentRequestId)
+        ? savedCashPaymentRequestId
+        : "";
 
       let adminEmail = "";
       let currentFilter = "pending";
@@ -87,6 +124,115 @@
         confirmed: "Confirmed",
         rejected: "Declined"
       };
+
+      function createCashCustomerDropdown() {
+        const wrapper = cashCustomerSelect.closest(".admin-order-dropdown");
+        const trigger = wrapper.querySelector(".admin-order-select-trigger");
+        const valueLabel = trigger.querySelector("[data-select-value]");
+        const menu = wrapper.querySelector(".admin-order-select-menu");
+
+        function enabledOptions() {
+          return Array.from(menu.querySelectorAll('[role="option"]:not(:disabled)'));
+        }
+
+        function close(focusTrigger = false) {
+          menu.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+          if (focusTrigger) trigger.focus();
+        }
+
+        function refresh() {
+          const selected = cashCustomerSelect.selectedOptions[0];
+          valueLabel.textContent = selected ? selected.textContent : "Select a customer";
+          menu.replaceChildren();
+
+          const options = Array.from(cashCustomerSelect.options).filter((option) => option.value !== "");
+          if (!options.length) {
+            const empty = document.createElement("div");
+            empty.className = "admin-order-select-empty";
+            empty.textContent = "No approved customers available.";
+            menu.appendChild(empty);
+            return;
+          }
+
+          options.forEach((option) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "admin-order-select-option";
+            item.setAttribute("role", "option");
+            item.setAttribute("aria-selected", String(option.selected));
+            item.tabIndex = -1;
+            item.textContent = option.textContent;
+            item.dataset.value = option.value;
+            menu.appendChild(item);
+          });
+        }
+
+        function focusOption(index) {
+          const options = enabledOptions();
+          if (!options.length) return;
+          const item = options[(index + options.length) % options.length];
+          item.focus({ preventScroll: true });
+
+          const menuRect = menu.getBoundingClientRect();
+          const itemRect = item.getBoundingClientRect();
+          if (itemRect.top < menuRect.top) menu.scrollTop -= menuRect.top - itemRect.top;
+          else if (itemRect.bottom > menuRect.bottom) menu.scrollTop += itemRect.bottom - menuRect.bottom;
+        }
+
+        function open(direction = 0) {
+          refresh();
+          menu.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+          const options = enabledOptions();
+          const selectedIndex = options.findIndex((item) => item.dataset.value === cashCustomerSelect.value);
+          const startIndex = selectedIndex >= 0
+            ? selectedIndex + direction
+            : (direction < 0 ? options.length - 1 : 0);
+          if (options.length) focusOption(startIndex);
+        }
+
+        cashCustomerSelect.addEventListener("change", refresh);
+        trigger.addEventListener("click", () => {
+          if (menu.hidden) open();
+          else close();
+        });
+        trigger.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            open(event.key === "ArrowDown" ? 1 : -1);
+          } else if (event.key === "Escape" && !menu.hidden) {
+            event.preventDefault();
+            close(true);
+          }
+        });
+        menu.addEventListener("click", (event) => {
+          const item = event.target.closest('[role="option"]');
+          if (!item || item.disabled) return;
+          cashCustomerSelect.value = item.dataset.value;
+          cashCustomerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+          close(true);
+        });
+        menu.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const options = enabledOptions();
+            focusOption(options.indexOf(document.activeElement) + (event.key === "ArrowDown" ? 1 : -1));
+          } else if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            focusOption(event.key === "Home" ? 0 : enabledOptions().length - 1);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            close(true);
+          }
+        });
+        document.addEventListener("click", (event) => {
+          if (!wrapper.contains(event.target)) close();
+        });
+
+        refresh();
+        return { focus: () => trigger.focus(), refresh };
+      }
 
       function syncPills() {
         pills.forEach((x) => {
@@ -158,13 +304,19 @@
           const statusLabel = t.status === "confirmed" ? "confirmed"
                             : t.status === "rejected"  ? "declined"
                             : "pending";
+          const isCash = t.paymentMethod === "cash";
           const whenRow = isPending
             ? '<dt>Requested</dt><dd>' + escape(formatWhen(t.requestedAt)) + '</dd>'
-            : '<dt>Requested</dt><dd>' + escape(formatWhen(t.requestedAt)) + '</dd>' +
-              '<dt>' + (t.status === "confirmed" ? "Confirmed" : "Declined") + '</dt>' +
-              '<dd>' + escape(formatWhen(t.confirmedAt)) +
-                (t.adminEmail ? ' <span class="muted">by ' + escape(t.adminEmail) + '</span>' : '') +
-              '</dd>';
+            : isCash
+              ? '<dt>Recorded</dt><dd>' + escape(formatWhen(t.requestedAt)) + '</dd>' +
+                '<dt>Added by</dt><dd>' + escape(t.adminEmail || "Admin") + '</dd>'
+              : '<dt>Requested</dt><dd>' + escape(formatWhen(t.requestedAt)) + '</dd>' +
+                '<dt>' + (t.status === "confirmed" ? "Confirmed" : "Declined") + '</dt>' +
+                '<dd>' + escape(formatWhen(t.confirmedAt)) +
+                  (t.adminEmail ? ' <span class="muted">by ' + escape(t.adminEmail) + '</span>' : '') +
+                '</dd>';
+          const paymentRow = '<dt>Method</dt><dd>' + (isCash ? "Cash" : "Bank transfer") + '</dd>';
+          const referenceRow = isCash ? '' : '<dt>Bank ref</dt><dd>' + escape(t.bankRef || "—") + '</dd>';
           const noteRow = t.note
             ? '<dt>Note</dt><dd>' + escape(t.note) + '</dd>'
             : '';
@@ -186,7 +338,8 @@
             '</header>' +
             '<dl class="card-fields">' +
               '<dt>Amount</dt><dd><strong style="color: var(--gold);">' + formatTk(Number(t.amount || 0)) + '</strong></dd>' +
-              '<dt>Bank ref</dt><dd>' + escape(t.bankRef || "—") + '</dd>' +
+              paymentRow +
+              referenceRow +
               noteRow +
               whenRow +
             '</dl>' +
@@ -202,6 +355,87 @@
           : "";
         listEl.innerHTML = cardsHTML + pager;
       }
+
+      cashPaymentToggle.addEventListener("click", () => {
+        cashPaymentForm.hidden = !cashPaymentForm.hidden;
+        cashPaymentToggle.setAttribute("aria-expanded", String(!cashPaymentForm.hidden));
+        if (!cashPaymentForm.hidden) cashCustomerDropdown.focus();
+      });
+
+      cashPaymentForm.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        if (!cashCustomerSelect.value) {
+          cashPaymentMessage.textContent = "Select a customer.";
+          cashPaymentMessage.className = "form-msg is-err";
+          cashPaymentMessage.hidden = false;
+          cashCustomerDropdown.focus();
+          return;
+        }
+        cashPaymentMessage.hidden = true;
+        cashPaymentMessage.className = "form-msg";
+        cashPaymentSubmit.disabled = true;
+        cashPaymentSubmit.textContent = "Adding cash payment…";
+
+        try {
+          const userEmail = cashCustomerSelect.value;
+          const amount = Number(document.getElementById("cash-payment-amount").value);
+          const confirmed = await confirmDialog({
+            title: "Record cash payment",
+            message: `Add ${formatTk(amount)} to ${userEmail}'s wallet now? This immediately increases their balance.`,
+            confirmLabel: "Add payment"
+          });
+          if (!confirmed) return;
+
+          const token = await auth.currentUser?.getIdToken();
+          if (!token) throw new Error("User not authenticated");
+          if (!cashPaymentRequestId) {
+            cashPaymentRequestId = doc(collection(db, "topups")).id;
+            sessionStorage.setItem(cashPaymentRequestStorageKey, cashPaymentRequestId);
+          }
+
+          const response = await fetch(window.location.origin + "/api/topups", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              action: "cash",
+              requestId: cashPaymentRequestId,
+              userEmail,
+              amount,
+              note: document.getElementById("cash-payment-note").value.trim()
+            })
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            if (response.status === 409) {
+              cashPaymentRequestId = "";
+              sessionStorage.removeItem(cashPaymentRequestStorageKey);
+            }
+            throw new Error(result.error || "Could not record cash payment");
+          }
+
+          cashPaymentForm.reset();
+          cashCustomerDropdown.refresh();
+          cashPaymentRequestId = "";
+          sessionStorage.removeItem(cashPaymentRequestStorageKey);
+          cashPaymentMessage.textContent =
+            result.alreadyHandled
+              ? `This request was already recorded: ${formatTk(result.amount)} for ${result.userEmail}.`
+              : `Cash payment of ${formatTk(amount)} added for ${userEmail}. New balance: ${formatTk(result.balance)}.`;
+          cashPaymentMessage.classList.add("is-ok");
+          cashPaymentMessage.hidden = false;
+        } catch (error) {
+          console.error("Cash payment failed:", error);
+          cashPaymentMessage.textContent = "Could not add cash payment. Try again.";
+          cashPaymentMessage.classList.add("is-err");
+          cashPaymentMessage.hidden = false;
+        } finally {
+          cashPaymentSubmit.disabled = false;
+          cashPaymentSubmit.textContent = "▶ Add cash payment";
+        }
+      });
 
       listEl.addEventListener("click", async (ev) => {
         const pagerBtn = ev.target.closest("[data-pager]");
@@ -342,11 +576,24 @@
         onSnapshot(
           collection(db, "applications"),
           (snap) => {
+            const approvedCustomers = new Map();
             snap.docs.forEach((d) => {
               const a = d.data();
               const email = (a.email || "").toLowerCase();
               if (email && a.name) namesByEmail[email] = a.name;
+              if (email && a.status === "approved") {
+                approvedCustomers.set(email, String(a.name || email));
+              }
             });
+            const selectedEmail = cashCustomerSelect.value;
+            cashCustomerSelect.innerHTML = '<option value="">Select a customer</option>' +
+              [...approvedCustomers.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([email, name]) =>
+                  `<option value="${escape(email)}">${escape(name)} · ${escape(email)}</option>`
+                ).join("");
+            if (approvedCustomers.has(selectedEmail)) cashCustomerSelect.value = selectedEmail;
+            cashCustomerDropdown.refresh();
             render();
           },
           (err) => console.error("applications subscription:", err)

@@ -656,6 +656,12 @@ button[disabled]:active {
 .form-msg.is-ok  { color: #06d6a0; }
 .form-msg.is-err { color: #ff3b6b; }
 
+.cash-payment-toggle { margin: 0 0 16px; }
+.cash-payment-form { margin: 0 0 20px; gap: 8px; }
+.cash-payment-form[hidden] { display: none; }
+.cash-payment-form .app-card-name { margin: 0 0 4px; }
+.cash-payment-form .admin-order-select-menu { box-sizing: border-box; }
+
 /* Small footer line inside a form for secondary links (e.g. "Sign in"
    under apply, "Apply" under login). Calm and unobtrusive. */
 .form-foot {

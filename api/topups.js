@@ -263,6 +263,160 @@ async function rejectTopup(req, res, decodedToken) {
   }
 }
 
+async function createCashTopup(req, res, decodedToken) {
+  const adminEmail = (decodedToken.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.map(email => email.toLowerCase()).includes(adminEmail)) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  const userEmail = typeof req.body.userEmail === 'string'
+    ? req.body.userEmail.trim().toLowerCase()
+    : '';
+  const requestId = req.body.requestId;
+  const amount = req.body.amount;
+  const note = req.body.note === undefined ? '' : req.body.note;
+
+  if (typeof requestId !== 'string' || !/^[A-Za-z0-9_-]{20}$/.test(requestId)) {
+    return res.status(400).json({ error: 'Invalid cash payment request ID' });
+  }
+  if (!userEmail || userEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+    return res.status(400).json({ error: 'Invalid customer email' });
+  }
+  if (typeof amount !== 'number' || !Number.isFinite(amount) ||
+      !Number.isInteger(amount) || amount < 100 || amount > 10000) {
+    return res.status(400).json({ error: 'Amount must be between 100 and 10000 Tk' });
+  }
+  if (typeof note !== 'string' || note.length > 160) {
+    return res.status(400).json({ error: 'Note must be 160 characters or fewer' });
+  }
+
+  try {
+    const appSnap = await db.collection('applications')
+      .where('email', '==', userEmail)
+      .limit(10)
+      .get();
+    if (!appSnap.docs.some(doc => doc.data().status === 'approved')) {
+      return res.status(403).json({ error: 'Customer application is not approved' });
+    }
+
+    const customer = await admin.auth().getUserByEmail(userEmail);
+    if (customer.disabled) {
+      return res.status(403).json({ error: 'Customer account is disabled' });
+    }
+
+    const topupRef = db.collection('topups').doc(requestId);
+    const walletRef = db.collection('wallets').doc(customer.uid);
+    const historyRef = db.collection('walletHistory').doc();
+    const notificationRef = db.collection('notifications').doc();
+    const result = await db.runTransaction(async transaction => {
+      const topupSnap = await transaction.get(topupRef);
+      const walletSnap = await transaction.get(walletRef);
+      const currentBalance = walletSnap.exists ? Number(walletSnap.data().balance || 0) : 0;
+      if (!Number.isFinite(currentBalance)) {
+        throw new Error('Invalid wallet balance');
+      }
+      if (topupSnap.exists) {
+        const existing = topupSnap.data();
+        if (existing.paymentMethod !== 'cash' || existing.userId !== customer.uid) {
+          return { conflict: true };
+        }
+        return {
+          success: true,
+          alreadyHandled: true,
+          topupId: topupRef.id,
+          userEmail: existing.userEmail,
+          amount: Number(existing.amount),
+          balance: Number(existing.balanceAfter)
+        };
+      }
+      const newBalance = currentBalance + amount;
+      if (!Number.isFinite(newBalance)) {
+        throw new Error('Invalid wallet balance');
+      }
+      const timestamp = admin.firestore.FieldValue.serverTimestamp();
+      const historyNote = note ? `Cash payment · ${note}` : 'Cash payment';
+      const message = [
+        'Top-up confirmed',
+        `Amount: ৳${amount}`,
+        'Payment method: Cash',
+        `Added by: ${adminEmail}`,
+        `New wallet balance: ৳${newBalance}`
+      ].join('\n');
+
+      transaction.set(walletRef, {
+        balance: newBalance,
+        email: userEmail,
+        updatedAt: timestamp
+      }, { merge: true });
+      transaction.set(topupRef, {
+        userId: customer.uid,
+        userEmail,
+        amount,
+        paymentMethod: 'cash',
+        bankRef: '',
+        note,
+        status: 'confirmed',
+        requestedAt: timestamp,
+        confirmedAt: timestamp,
+        adminEmail,
+        balanceAfter: newBalance
+      });
+      transaction.set(historyRef, {
+        userId: customer.uid,
+        userEmail,
+        type: 'topup',
+        paymentMethod: 'cash',
+        amount,
+        balanceAfter: newBalance,
+        ref: topupRef.id,
+        note: historyNote,
+        byAdmin: adminEmail,
+        createdAt: timestamp
+      });
+      transaction.set(notificationRef, {
+        userId: customer.uid,
+        userEmail,
+        audience: 'user',
+        message,
+        link: 'wallet#history',
+        linkText: 'View wallet',
+        type: 'topup-confirmed',
+        read: false,
+        createdAt: timestamp
+      });
+
+      return {
+        success: true,
+        alreadyHandled: false,
+        topupId: topupRef.id,
+        userEmail,
+        amount,
+        balance: newBalance
+      };
+    });
+
+    if (result.conflict) {
+      return res.status(409).json({ error: 'This request ID is already in use. Submit the payment again.' });
+    }
+
+    if (!result.alreadyHandled) {
+      await sendEmailUser(
+        userEmail,
+        'Cash payment added to your wallet',
+        `A cash payment of ৳${amount} has been added to your wallet.\n\nPayment method: Cash\nAdded by: ${adminEmail}\nYour new wallet balance: ৳${result.balance}\n\nBest regards,\nDawat`
+      );
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({ error: 'Customer account was not found' });
+    }
+    const { sendErrorResponse } = await import('./error-handler.js');
+    return sendErrorResponse(res, error, 'Failed to record cash payment');
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -289,6 +443,8 @@ export default async function handler(req, res) {
       return confirmTopup(req, res, decodedToken);
     case 'reject':
       return rejectTopup(req, res, decodedToken);
+    case 'cash':
+      return createCashTopup(req, res, decodedToken);
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
