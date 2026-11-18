@@ -2705,7 +2705,7 @@ button[disabled]:active {
   .qty-input, .qty-stepper .qty-input { width: 48px; font-size: 16px; }
   .qty-btn { width: 36px; font-size: 20px; }
   .admin-order-meal-controls {
-    grid-template-columns: minmax(0, 1fr) 114px;
+    grid-template-columns: minmax(0, 1fr) max-content;
     width: 100%;
   }
   .admin-order-meal-controls > button { grid-column: 1 / -1; justify-self: stretch; }
