@@ -42,7 +42,9 @@
         <a href="settings-admin">Settings</a>
       </nav>
 
-      <form id="admin-order-form" class="app-card admin-order-form">
+      <button type="button" class="ghost-btn admin-form-toggle" id="admin-order-toggle"
+        aria-expanded="false" aria-controls="admin-order-form">＋ Place order for a user</button>
+      <form id="admin-order-form" class="app-card admin-order-form" hidden>
         <header class="app-card-head">
           <h3 class="app-card-name">Place order for a user</h3>
         </header>
@@ -134,6 +136,7 @@
       const whoEmail = document.getElementById("admin-who-email");
       const signoutBtn = document.getElementById("signout-btn");
       const listEl   = document.getElementById("orders-list");
+      const adminOrderToggle = document.getElementById("admin-order-toggle");
       const adminOrderForm = document.getElementById("admin-order-form");
       const adminOrderUser = document.getElementById("admin-order-user");
       const adminOrderDate = document.getElementById("admin-order-date");
@@ -154,6 +157,12 @@
       const adminOrderDropdowns = [];
       const adminOrderUserDropdown = createAdminOrderDropdown(adminOrderUser);
       const adminOrderMealDropdown = createAdminOrderDropdown(adminOrderMeal);
+
+      adminOrderToggle.addEventListener("click", () => {
+        adminOrderForm.hidden = !adminOrderForm.hidden;
+        adminOrderToggle.setAttribute("aria-expanded", String(!adminOrderForm.hidden));
+        if (!adminOrderForm.hidden) adminOrderUserDropdown.focus();
+      });
 
       let customerInfo  = {}; // { email: { name, office, address } }
       let activeEmails  = new Set();

@@ -662,6 +662,11 @@ button[disabled]:active {
 .cash-payment-form[hidden] { display: none; }
 .cash-payment-form .app-card-name { margin: 0 0 4px; }
 .cash-payment-form .admin-order-select-menu { box-sizing: border-box; }
+.admin-form-toggle { margin: 0 0 16px; }
+.meal-form { margin: 0 0 20px; gap: 8px; }
+.app-card.meal-form { padding: 18px 24px 20px; }
+.meal-form .app-card-name { margin: 0 0 4px; }
+.meal-form[hidden], .admin-order-form[hidden] { display: none; }
 
 /* Small footer line inside a form for secondary links (e.g. "Sign in"
    under apply, "Apply" under login). Calm and unobtrusive. */
@@ -2618,6 +2623,7 @@ button[disabled]:active {
   /* --- Forms --- */
   form { padding: 16px 16px 18px; }
   .app-card.cash-payment-form { padding: 16px 16px 18px; }
+  .app-card.meal-form { padding: 16px 16px 18px; }
   input, select { font-size: 16px; padding: 8px 10px; }
   label { font-size: 13px; letter-spacing: 1px; }
   button { font-size: 16px; letter-spacing: 2px; padding: 11px 14px; }
@@ -2799,6 +2805,7 @@ button[disabled]:active {
   /* --- Form --- */
   form { padding: 14px 12px 16px; }
   .app-card.cash-payment-form { padding: 14px 12px 16px; }
+  .app-card.meal-form { padding: 14px 12px 16px; }
   input, select { font-size: 16px; padding: 7px 9px; }
   button { font-size: 15px; padding: 10px 12px; letter-spacing: 1.5px; }
 

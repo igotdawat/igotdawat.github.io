@@ -42,25 +42,25 @@
         <a href="settings-admin">Settings</a>
       </nav>
 
-      <div class="form-wrap">
-        <h2 class="section-title">Add a meal</h2>
-        <form id="meal-form" novalidate>
-          <label for="meal-name">Name</label>
-          <input id="meal-name" name="name" type="text" placeholder="Chicken Biriyani" required />
+      <button type="button" class="ghost-btn admin-form-toggle" id="meal-form-toggle"
+        aria-expanded="false" aria-controls="meal-form">＋ Add a meal</button>
+      <form id="meal-form" class="app-card meal-form" hidden novalidate>
+        <h2 class="app-card-name">Add a meal</h2>
+        <label for="meal-name">Name</label>
+        <input id="meal-name" name="name" type="text" placeholder="Chicken Biriyani" required />
 
-          <label for="meal-desc">Description (optional)</label>
-          <input id="meal-desc" name="description" type="text" placeholder="Served with basmati rice" />
+        <label for="meal-desc">Description (optional)</label>
+        <input id="meal-desc" name="description" type="text" placeholder="Served with basmati rice" />
 
-          <label for="meal-price">Price (Tk)</label>
-          <input id="meal-price" name="price" type="number" min="0" step="1" placeholder="140" required />
+        <label for="meal-price">Price (Tk)</label>
+        <input id="meal-price" name="price" type="number" min="0" step="1" placeholder="140" required />
 
-          <div class="meal-form-actions">
-            <button type="submit" id="meal-submit">▶ Save meal</button>
-            <button type="button" class="ghost-btn" id="meal-cancel-edit" hidden>Cancel edit</button>
-          </div>
-          <p id="meal-msg" class="form-msg" hidden></p>
-        </form>
-      </div>
+        <div class="meal-form-actions">
+          <button type="submit" id="meal-submit">▶ Save meal</button>
+          <button type="button" class="ghost-btn" id="meal-cancel-edit" hidden>Cancel edit</button>
+        </div>
+        <p id="meal-msg" class="form-msg" hidden></p>
+      </form>
 
       <div id="meals-list" class="apps-list" style="margin-top: 24px;" aria-live="polite">
         <p class="apps-empty">Loading<span class="loading-dots"><span></span><span></span><span></span></span></p>
@@ -87,6 +87,7 @@
       const view      = document.getElementById("meals-view");
       const whoEmail  = document.getElementById("admin-who-email");
       const signoutBtn= document.getElementById("signout-btn");
+      const formToggle = document.getElementById("meal-form-toggle");
       const form      = document.getElementById("meal-form");
       const msg       = document.getElementById("meal-msg");
       const listEl    = document.getElementById("meals-list");
@@ -101,6 +102,12 @@
       let editingMealId = null;
       const WEEKDAY_KEYS = ["sat", "sun", "mon", "tue", "wed", "thu", "fri"];
 
+      formToggle.addEventListener("click", () => {
+        form.hidden = !form.hidden;
+        formToggle.setAttribute("aria-expanded", String(!form.hidden));
+        if (!form.hidden) nameInput.focus();
+      });
+
       function resetMealEditor() {
         editingMealId = null;
         form.reset();
@@ -112,6 +119,8 @@
       }
 
       function beginMealEdit(meal) {
+        form.hidden = false;
+        formToggle.setAttribute("aria-expanded", "true");
         editingMealId = meal.id;
         nameInput.value = meal.name || "";
         descInput.value = meal.description || "";
