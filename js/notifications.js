@@ -14,7 +14,7 @@
 import { db } from "./firebase.js";
 import {
   addDoc, collection, doc, deleteDoc, getDocs, onSnapshot,
-  query, serverTimestamp, where, limit, orderBy, writeBatch
+  query, serverTimestamp, where, limit, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { confirmDialog } from "./modal.js";
 import { ADMIN_EMAILS } from "./admin-config.js";
@@ -280,23 +280,13 @@ export function mountNotificationBell({ user }) {
   }
 
   attach(
-    query(
-      collection(db, "notifications"),
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(50)
-    ),
+    query(collection(db, "notifications"), where("userId", "==", user.uid), limit(50)),
     "user",
     () => { if (firstUserSnap) { firstUserSnap = false; return true; } return false; }
   );
   if (isAdmin) {
     attach(
-      query(
-        collection(db, "notifications"),
-        where("audience", "==", "admin"),
-        orderBy("createdAt", "desc"),
-        limit(50)
-      ),
+      query(collection(db, "notifications"), where("audience", "==", "admin"), limit(50)),
       "admin",
       () => { if (firstAdminSnap) { firstAdminSnap = false; return true; } return false; }
     );
