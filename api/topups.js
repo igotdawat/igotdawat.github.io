@@ -338,9 +338,7 @@ async function createCashTopup(req, res, decodedToken) {
       const message = [
         'Top-up confirmed',
         `Amount: ৳${amount}`,
-        'Payment method: Cash',
-        `Added by: ${adminEmail}`,
-        `New wallet balance: ৳${newBalance}`
+        'Payment method: Cash'
       ].join('\n');
 
       transaction.set(walletRef, {
@@ -403,7 +401,7 @@ async function createCashTopup(req, res, decodedToken) {
       await sendEmailUser(
         userEmail,
         'Cash payment added to your wallet',
-        `A cash payment of ৳${amount} has been added to your wallet.\n\nPayment method: Cash\nAdded by: ${adminEmail}\nYour new wallet balance: ৳${result.balance}\n\nBest regards,\nDawat`
+        `A cash payment of ৳${amount} has been added to your wallet.\n\nPayment method: Cash\n\nBest regards,\nDawat`
       );
     }
 
