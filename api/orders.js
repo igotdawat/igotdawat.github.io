@@ -126,12 +126,12 @@ async function placeOrder(req, res, userId, userEmail) {
     });
 
     const order = { forDate, items: validatedItems, total: serverTotal };
-    notifyAdminsInternal({
+    await notifyAdminsInternal({
       message: formatOrderNotification({ type: 'order-placed', order, userEmail }),
       link: 'orders-admin',
       linkText: 'View orders',
       type: 'order-placed'
-    }).catch(() => {});
+    }).catch(error => console.error('Order notification failed:', error));
 
     return res.status(200).json(result);
   } catch (error) {
@@ -279,6 +279,19 @@ async function adminPlaceOrder(req, res, adminUid, adminEmail) {
       return { success: true, orderId: orderRef.id, total: serverTotal, newBalance };
     });
 
+    const order = {
+      forDate,
+      items: validatedItems,
+      total: serverTotal,
+      createdByAdminEmail: adminEmail.toLowerCase()
+    };
+    await notifyAdminsInternal({
+      message: formatOrderNotification({ type: 'order-placed', order, userEmail: targetEmail }),
+      link: 'orders-admin',
+      linkText: 'View order',
+      type: 'order-placed'
+    }).catch(error => console.error('Admin order notification failed:', error));
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('Admin order placement failed:', error);
@@ -356,12 +369,12 @@ async function cancelOrder(req, res, userId, userEmail) {
     });
 
     if (orderData) {
-      notifyAdminsInternal({
+      await notifyAdminsInternal({
         message: formatOrderNotification({ type: 'order-cancelled', order: orderData, userEmail }),
         link: 'orders-admin',
         linkText: 'View orders',
         type: 'order-cancelled'
-      }).catch(() => {});
+      }).catch(error => console.error('Order cancellation notification failed:', error));
     }
 
     return res.status(200).json(result);
@@ -496,7 +509,7 @@ async function editOrder(req, res, userId, userEmail) {
     });
 
     if (orderData) {
-      notifyAdminsInternal({
+      await notifyAdminsInternal({
         message: formatOrderNotification({
           type: 'order-edited',
           order: orderData,
@@ -509,7 +522,7 @@ async function editOrder(req, res, userId, userEmail) {
         link: 'orders-admin',
         linkText: 'View orders',
         type: 'order-edited'
-      }).catch(() => {});
+      }).catch(error => console.error('Order edit notification failed:', error));
     }
 
     return res.status(200).json(result);

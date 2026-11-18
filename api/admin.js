@@ -4,7 +4,7 @@ import { deleteUserDataByEmail } from './delete-user-data-helper.js';
 
 async function sendEmailUser(to, subject, body) {
   try {
-    await fetch('https://api.sendgrid.com/v3/mail/send', {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -17,6 +17,9 @@ async function sendEmailUser(to, subject, body) {
         content: [{ type: 'text/plain', value: body }]
       })
     });
+    if (!response.ok) {
+      throw new Error(`SendGrid returned HTTP ${response.status}`);
+    }
   } catch (err) {
     console.error('Email error:', err);
   }
@@ -169,12 +172,16 @@ async function notifyNewApplication(req, res, decodedToken) {
       return res.status(400).json({ error: 'Application already processed' });
     }
 
-    notifyAdminsInternal({
-      message: `New application\nBy: ${name} (${email})\nMobile: ${mobile}`,
-      link: 'applications#pending',
-      linkText: 'Review',
-      type: 'application-new'
-    }).catch(() => {});
+    try {
+      await notifyAdminsInternal({
+        message: `New application\nBy: ${name} (${email})\nMobile: ${mobile}`,
+        link: 'applications#pending',
+        linkText: 'Review',
+        type: 'application-new'
+      });
+    } catch (notificationError) {
+      console.error('New application notification failed:', notificationError);
+    }
 
     try {
     await sendEmailUser(
@@ -195,21 +202,17 @@ async function notifyNewApplication(req, res, decodedToken) {
 
 export async function notifyAdminsInternal({ message, link = "", linkText = "", type = "info" }) {
   if (!message) return;
-  try {
-    await db.collection('notifications').add({
-      userId: '',
-      userEmail: '',
-      audience: 'admin',
-      message: String(message).substring(0, 500),
-      link,
-      linkText,
-      type,
-      read: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (error) {
-    // Silently fail notification writes
-  }
+  await db.collection('notifications').add({
+    userId: '',
+    userEmail: '',
+    audience: 'admin',
+    message: String(message).substring(0, 500),
+    link,
+    linkText,
+    type,
+    read: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
 }
 
 export default async function handler(req, res) {

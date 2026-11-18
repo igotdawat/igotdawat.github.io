@@ -4,7 +4,7 @@ import { notifyAdminsInternal } from './admin.js';
 
 async function sendEmailUser(to, subject, body) {
   try {
-    await fetch('https://api.sendgrid.com/v3/mail/send', {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -17,6 +17,9 @@ async function sendEmailUser(to, subject, body) {
         content: [{ type: 'text/plain', value: body }]
       })
     });
+    if (!response.ok) {
+      throw new Error(`SendGrid returned HTTP ${response.status}`);
+    }
   } catch (err) {
     console.error('Email error:', err);
   }
@@ -87,12 +90,12 @@ async function createTopupRequest(req, res, decodedToken) {
 
     const byLabel = userName ? `${userName} (${userEmail})` : userEmail;
 
-    notifyAdminsInternal({
+    await notifyAdminsInternal({
       message: `Top-up requested\nFrom: ${byLabel}\nAmount: ৳${amount}\nBank ref: ${bankRef}`,
       link: 'topups-admin#pending',
       linkText: 'Review',
       type: 'topup-requested'
-    }).catch(() => {});
+    }).catch(error => console.error('Top-up notification failed:', error));
 
     try {
       await sendEmailUser(

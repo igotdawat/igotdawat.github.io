@@ -13,7 +13,10 @@ export function formatOrderNotification({ type, order, userEmail, userName, item
 
   if (type === 'order-placed') {
     const itemList = (order.items || []).map((it) => `• ${it.name} ×${it.qty} — ৳${it.price * it.qty}`).join('\n');
-    message = `New order — ${dateLabel}\nBy: ${byLabel}\n${itemList}\nTotal: ৳${order.total}`;
+    const byLine = order.createdByAdminEmail
+      ? `By admin: ${order.createdByAdminEmail}\nFor: ${userEmail}`
+      : `By: ${byLabel}`;
+    message = `New order — ${dateLabel}\n${byLine}\n${itemList}\nTotal: ৳${order.total}`;
   }
   else if (type === 'order-cancelled') {
     const itemList = (order.items || []).map((it) => `• ${it.name} ×${it.qty} — ৳${it.price * it.qty}`).join('\n');

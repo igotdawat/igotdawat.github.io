@@ -203,6 +203,8 @@
               action: "notify-new-app",
               name, email, mobile
             })
+          }).then((response) => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
           }).catch((e) => console.error("notify admin:", e));
           form.reset();
           status.textContent =
