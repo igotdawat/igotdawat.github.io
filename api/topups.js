@@ -401,7 +401,7 @@ async function createCashTopup(req, res, decodedToken) {
       await sendEmailUser(
         userEmail,
         'Cash payment added to your wallet',
-        `A cash payment of ৳${amount} has been added to your wallet.\n\nPayment method: Cash\n\nBest regards,\nDawat`
+        `A cash payment of ৳${amount} has been added to your wallet.\n\nPayment method: Cash\nYour new wallet balance: ৳${result.balance}\n\nBest regards,\nDawat`
       );
     }
 
